@@ -6,7 +6,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 
 # Configura tu clave API y los endpoints
-API_KEY = os.getenv('API_KEY')  # Reemplaza con tu clave API de football-data.org
+API_KEY = os.getenv('7dcb5906ce9b48cf9becc41685b38867')  # Reemplaza con tu clave API de football-data.org
 BASE_URL = 'https://api.football-data.org/v4/matches'
 TEAMS_URL = 'https://api.football-data.org/v4/teams'
 STANDINGS_URL = 'https://api.football-data.org/v4/competitions/{league_id}/standings'
@@ -227,7 +227,7 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"Error al obtener datos del partido. Estado: {response.status_code}")
 
 if __name__ == '__main__':
-    TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')  # Token del bot
+    TELEGRAM_TOKEN = os.getenv('7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c')  # Token del bot
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
