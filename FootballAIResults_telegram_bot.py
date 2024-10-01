@@ -241,5 +241,5 @@ if __name__ == '__main__':
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("predict", predict))
-
+    print('Bot iniciado SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUH')
     application.run_polling()
