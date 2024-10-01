@@ -16,36 +16,40 @@ LEAGUES = {
     'Premier League': 2021,  # Liga Inglesa
     'Bundesliga': 2002,   # Liga Alemana
     'Ligue 1': 2015,   # Liga Francesa
-    'Serie A (Italia)': 2019
+    'Serie A (Italia)': 2019,
+    'Champions League': 2001
 }
+
+# Personalización de la predicción
+confidence_threshold = 0.7  # Umbral de confianza para mostrar predicciones
 
 def get_matches(season='2024'):
     headers = {
         'X-Auth-Token': API_KEY
     }
-    
+
     matches = []
-    
+
     for league_name, league_id in LEAGUES.items():
         response = requests.get(f"{BASE_URL}?competitions={league_id}&season={season}", headers=headers)
-        
+
         if response.status_code == 200:
             league_matches = response.json().get('matches', [])
             matches.extend(league_matches)
         else:
             print(f"Error al obtener partidos de {league_name}. Estado: {response.status_code}")
-    
+
     return matches
 
 def get_team_stats(team_id, league_id):
     headers = {
         'X-Auth-Token': API_KEY
     }
-    
+
     response = requests.get(STANDINGS_URL.format(league_id=league_id), headers=headers)
     if response.status_code == 200:
         standings_data = response.json()
-        
+
         for standing in standings_data['standings'][0]['table']:
             if standing['team']['id'] == team_id:
                 return {
@@ -57,7 +61,7 @@ def get_team_stats(team_id, league_id):
                     'matchesPlayed': standing.get('matchesPlayed', 1),  # Usar 1 para evitar división por cero
                     'last5Games': standing.get('last5Games', [])
                 }
-    
+
     print(f"Error al obtener estadísticas del equipo {team_id}. Estado: {response.status_code}")
     return None
 
@@ -65,7 +69,7 @@ def get_last_5_games(team_id):
     headers = {
         'X-Auth-Token': API_KEY
     }
-    
+
     response = requests.get(f"{TEAMS_URL}/{team_id}/matches?status=FINISHED", headers=headers)
     if response.status_code == 200:
         matches = response.json().get('matches', [])[-5:]  # Obtener solo los últimos 5 partidos
@@ -78,7 +82,7 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     labels = [home_team_name, 'Empate', away_team_name]
     sizes = [home_win_percentage, draw_percentage, away_win_percentage]
     colors = ['#ff9999', '#66b3ff', '#99ff99']
-    
+
     plt.figure(figsize=(8, 5))
     plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140)
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
@@ -91,10 +95,30 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
 
+def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
+    home_scores = [game['score']['home'] for game in home_last_5]
+    away_scores = [game['score']['away'] for game in away_last_5]
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
+    plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
+    plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
+    plt.title('Rendimiento en los Últimos 5 Partidos')
+    plt.xlabel('Partidos')
+    plt.ylabel('Goles')
+    plt.legend()
+
+    # Guardar la gráfica en un buffer
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)  # Volver al inicio del buffer
+    plt.close()  # Cerrar la figura para liberar memoria
+    return buf
+
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
     home_stats = get_team_stats(home_team_id, league_id)
     away_stats = get_team_stats(away_team_id, league_id)
-    
+
     if not home_stats or not away_stats:
         return None, None, None, None, None, None, None, None
 
@@ -144,6 +168,14 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
         result = "Empate"
         winning_team = "Ninguno (Empate)"
 
+    # Verificar la confianza en la predicción
+    if home_win_percentage >= confidence_threshold * 100:
+        result += f" (Alta confianza en que {home_team_name} ganará)"
+    elif away_win_percentage >= confidence_threshold * 100:
+        result += f" (Alta confianza en que {away_team_name} ganará)"
+    else:
+        result += " (Confianza baja en la predicción)"
+
     return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -169,7 +201,7 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         league_id = match_data['competition']['id']
         home_team_name = match_data['homeTeam']['name']
         away_team_name = match_data['awayTeam']['name']
-        
+
         result, winning_team, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(
             home_team_id, away_team_id, league_id, home_team_name, away_team_name)
 
@@ -181,13 +213,25 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text(f"Predicción: {result}")
 
             # Graficar probabilidades y enviar imagen
-            buf = plot_probabilities(win_percentage, draw_percentage, lose_percentage, home_team_name, away_team_name)
-            await update.message.reply_photo(photo=buf)
+            prob_buf = plot_probabilities(win_percentage, draw_percentage, lose_percentage, home_team_name, away_team_name)
+            await update.message.reply_photo(photo=prob_buf)
+
+            # Graficar rendimiento de los últimos 5 partidos
+            performance_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+            await update.message.reply_photo(photo=performance_buf)
 
             # Mostrar los últimos 5 partidos
             home_last_games_text = f"\nÚltimos 5 partidos de {home_team_name}:\n\n" + "\n".join([f"{game['homeTeam']} {game['score']['home']} - {game['score']['away']} {game['awayTeam']}" for game in home_last_5])
             away_last_games_text = f"\n\nÚltimos 5 partidos de {away_team_name}:\n\n" + "\n".join([f"{game['homeTeam']} {game['score']['home']} - {game['score']['away']} {game['awayTeam']}" for game in away_last_5])
             await update.message.reply_text(home_last_games_text + away_last_games_text)
+
+            # Mostrar estadísticas avanzadas
+            advanced_stats_text = (
+                f"\n\nEstadísticas Avanzadas:\n"
+                f"{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
+                f"{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}"
+            )
+            await update.message.reply_text(advanced_stats_text)
 
     else:
         await update.message.reply_text("Error al obtener los datos del partido.")
