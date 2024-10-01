@@ -1,3 +1,4 @@
+import os
 import requests
 import matplotlib.pyplot as plt
 from telegram import Update
@@ -5,7 +6,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 
 # Configura tu clave API y los endpoints
-API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
+API_KEY = os.getenv('API_KEY')  # Reemplaza con tu clave API de football-data.org
 BASE_URL = 'https://api.football-data.org/v4/matches'
 TEAMS_URL = 'https://api.football-data.org/v4/teams'
 STANDINGS_URL = 'https://api.football-data.org/v4/competitions/{league_id}/standings'
@@ -183,61 +184,51 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     matches = get_matches()
     if matches:
         match_list = "\n".join([f"{match['id']}: {match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
-        await update.message.reply_text(f"¡Hola! Aquí tienes la lista de partidos disponibles:\n{match_list}\n\nUsa /predict <match_id> para predecir el resultado de un partido.")
+        await update.message.reply_text(f"Partidos disponibles:\n{match_list}\n\nUsa el comando /predict <match_id> para predecir el resultado de un partido.")
     else:
-        await update.message.reply_text("No se encontraron partidos disponibles en este momento.")
+        await update.message.reply_text("No se encontraron partidos disponibles.")
 
 async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) != 1:
-        await update.message.reply_text("Por favor proporciona un ID de partido válido.")
+        await update.message.reply_text("Por favor, proporciona el ID del partido.")
         return
 
-    match_id = int(context.args[0])
-    match_response = requests.get(f"{BASE_URL}/{match_id}", headers={'X-Auth-Token': API_KEY})
-    if match_response.status_code == 200:
-        match_data = match_response.json()
-        home_team_id = match_data['homeTeam']['id']
-        away_team_id = match_data['awayTeam']['id']
-        league_id = match_data['competition']['id']
+    match_id = context.args[0]
+    headers = {
+        'X-Auth-Token': API_KEY
+    }
+
+    response = requests.get(f"{BASE_URL}/{match_id}", headers=headers)
+
+    if response.status_code == 200:
+        match_data = response.json()
         home_team_name = match_data['homeTeam']['name']
         away_team_name = match_data['awayTeam']['name']
+        home_team_id = match_data['homeTeam']['id']
+        away_team_id = match_data['awayTeam']['id']
+        league_id = match_data['league']['id']
 
-        result, winning_team, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(
-            home_team_id, away_team_id, league_id, home_team_name, away_team_name)
+        result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name)
 
         if result:
-            league_info = f"{home_team_name} (Posición: {home_stats['position']}, Puntos: {home_stats['points']}) vs {away_team_name} (Posición: {away_stats['position']}, Puntos: {away_stats['points']})"
-            await update.message.reply_text(league_info)
+            # Enviar el gráfico de probabilidades
+            buf_prob = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf_prob)
 
-            # Mensaje sobre la predicción
-            await update.message.reply_text(f"Predicción: {result}")
+            # Enviar los últimos 5 partidos
+            buf_last5 = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf_last5)
 
-            # Graficar probabilidades y enviar imagen
-            prob_buf = plot_probabilities(win_percentage, draw_percentage, lose_percentage, home_team_name, away_team_name)
-            await update.message.reply_photo(photo=prob_buf)
-
-            # Graficar rendimiento de los últimos 5 partidos
-            performance_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
-            await update.message.reply_photo(photo=performance_buf)
-
-            # Mostrar los últimos 5 partidos
-            home_last_games_text = f"\nÚltimos 5 partidos de {home_team_name}:\n\n" + "\n".join([f"{game['homeTeam']} {game['score']['home']} - {game['score']['away']} {game['awayTeam']}" for game in home_last_5])
-            away_last_games_text = f"\n\nÚltimos 5 partidos de {away_team_name}:\n\n" + "\n".join([f"{game['homeTeam']} {game['score']['home']} - {game['score']['away']} {game['awayTeam']}" for game in away_last_5])
-            await update.message.reply_text(home_last_games_text + away_last_games_text)
-
-            # Mostrar estadísticas avanzadas
-            advanced_stats_text = (
-                f"\n\nEstadísticas Avanzadas:\n"
-                f"{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
-                f"{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}"
-            )
-            await update.message.reply_text(advanced_stats_text)
-
+            # Enviar la predicción
+            await update.message.reply_text(result)
+        else:
+            await update.message.reply_text("No se pudo realizar la predicción.")
     else:
-        await update.message.reply_text("Error al obtener los datos del partido.")
+        await update.message.reply_text(f"Error al obtener datos del partido. Estado: {response.status_code}")
 
 if __name__ == '__main__':
-    application = ApplicationBuilder().token('7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c').build()  # Reemplaza con el token de tu bot
+    TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')  # Token del bot
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("predict", predict))
