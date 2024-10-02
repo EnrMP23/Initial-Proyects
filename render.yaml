@@ -7,8 +7,9 @@ services:
     startCommand: python FootballAIResults_telegram_bot.py
     envVars:
       - key: FOOTBALL_DATA_API_KEY
-        value: your_football_data_api_key
+        value: 7dcb5906ce9b48cf9becc41685b38867
       - key: TELEGRAM_BOT_TOKEN
-        value: your_telegram_bot_token
+        value: 7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c
       - key: APP_URL
-        value: https://your-app.onrender.com
+        value: https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
+
