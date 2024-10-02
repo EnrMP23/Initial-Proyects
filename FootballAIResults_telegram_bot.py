@@ -101,8 +101,8 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     away_scores = [game['score']['away'] for game in away_last_5]  # Goles anotados por el equipo visitante
     
     # Calcular goles recibidos
-    home_conceded = [game['score']['away'] for game in home_last_5]  # Goles recibidos por el equipo local
-    away_conceded = [game['score']['home'] for game in away_last_5]  # Goles recibidos por el equipo visitante
+    home_conceded = [game['score']['home'] for game in home_last_5]  # Goles recibidos por el equipo local
+    away_conceded = [game['score']['away'] for game in away_last_5]  # Goles recibidos por el equipo visitante
 
     # Crear la figura
     plt.figure(figsize=(12, 6))
