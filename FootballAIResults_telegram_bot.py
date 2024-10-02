@@ -29,7 +29,7 @@ TOKEN = '7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c'  # Reemplaza con tu tok
 APP_URL = 'https://initial-proyects.onrender.com'  # Reemplaza con tu URL de Render
 
 # Establecer el webhook al inicio
-webhook_url = "https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
+webhook_url = f"https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
 "
 response = requests.get(webhook_url)
 
@@ -231,3 +231,4 @@ if __name__ == '__main__':
         port=int(os.environ.get("PORT", 8443)),
         url_path=TOKEN
     )
+
