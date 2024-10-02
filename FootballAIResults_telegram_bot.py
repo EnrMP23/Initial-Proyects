@@ -22,7 +22,7 @@ LEAGUES = {
 }
 
 # Personalización de la predicción
-confidence_threshold = 0.65  # Umbral de confianza para mostrar predicciones
+confidence_threshold = 0.6  # Umbral de confianza para mostrar predicciones
 
 def get_matches(season='2024'):
     headers = {
@@ -97,24 +97,23 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    home_scores = [game['score']['home'] for game in home_last_5]  # Extract home team scores
-    away_scores = [game['score']['away'] for game in away_last_5]  # Extract away team scores
+    home_scores = [game['score']['home'] for game in home_last_5]
+    away_scores = [game['score']['away'] for game in away_last_5]
 
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
     plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
-    
     plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
     plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
     plt.legend()
-    
-    # Save the plot in a buffer
+
+    # Guardar la gráfica en un buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
-    buf.seek(0)  # Go back to the beginning of the buffer
-    plt.close()  # Close the figure to free memory
+    buf.seek(0)  # Volver al inicio del buffer
+    plt.close()  # Cerrar la figura para liberar memoria
     return buf
 
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
@@ -184,66 +183,58 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Obtener los partidos disponibles
     matches = get_matches()
     if matches:
-        match_list = "\n".join([f"ID: {match['id']} - {match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
-        await update.message.reply_text(f"Partidos disponibles:\n{match_list}\n\nEscribe el ID del partido para predecir.")
+        await update.message.reply_text("Partidos disponibles para predicción:\n" + "\n".join(
+            [f"{match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches]))
     else:
-        await update.message.reply_text("No se encontraron partidos disponibles.")
+        await update.message.reply_text("No se encontraron partidos.")
 
 async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if context.args:
-        match_id = int(context.args[0])  # ID del partido proporcionado por el usuario
-        headers = {
-            'X-Auth-Token': API_KEY
-        }
-        response = requests.get(f"{BASE_URL}/{match_id}", headers=headers)
+    match_id = context.args[0] if context.args else None
+    if match_id is None:
+        await update.message.reply_text("Por favor, proporciona el ID del partido para predecir.")
+        return
 
-        if response.status_code == 200:
-            match_info = response.json()
-            home_team_id = match_info['homeTeam']['id']
-            away_team_id = match_info['awayTeam']['id']
-            home_team_name = match_info['homeTeam']['name']
-            away_team_name = match_info['awayTeam']['name']
+    # Obtener el partido específico
+    headers = {
+        'X-Auth-Token': API_KEY
+    }
 
-            result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(home_team_id, away_team_id, match_info['league']['id'], home_team_name, away_team_name)
+    response = requests.get(f"{BASE_URL}/{match_id}", headers=headers)
 
-            if result:
-                # Generar la gráfica de probabilidades
-                buf = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
-                await update.message.reply_photo(photo=buf)
+    if response.status_code == 200:
+        match = response.json()
+        home_team_id = match['homeTeam']['id']
+        away_team_id = match['awayTeam']['id']
+        league_id = match['league']['id']
+        home_team_name = match['homeTeam']['name']
+        away_team_name = match['awayTeam']['name']
 
-                # Generar la gráfica de los últimos 5 partidos
-                buf_last_5 = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
-                await update.message.reply_photo(photo=buf_last_5)
+        result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(
+            home_team_id, away_team_id, league_id, home_team_name, away_team_name)
 
-                await update.message.reply_text(f"Predicción: {result}\nEquipo ganador probable: {winning_team}")
-                await update.message.reply_text(f"Estadísticas de {home_team_name}: {home_stats}\nEstadísticas de {away_team_name}: {away_stats}")
-            else:
-                await update.message.reply_text("No se pudo realizar la predicción.")
-        else:
-            await update.message.reply_text("Error al obtener información del partido.")
+        if result is None:
+            await update.message.reply_text("No se pudieron obtener estadísticas para la predicción.")
+            return
+
+        # Generar gráficos
+        prob_plot_buf = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
+        last_5_plot_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+
+        await update.message.reply_photo(photo=prob_plot_buf, caption=result)
+        await update.message.reply_photo(photo=last_5_plot_buf, caption=f"Rendimiento en los últimos 5 partidos: {home_team_name} vs {away_team_name}")
+    else:
+        await update.message.reply_text(f"Error al obtener detalles del partido. Estado: {response.status_code}")
 
 if __name__ == '__main__':
-    async def main():
-        # Inicializa la aplicación del bot
-        application = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()
+    application = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()  # Reemplaza con tu token de bot
 
-        # Establece la URL del webhook
-        await application.bot.set_webhook(url="https://initial-proyects.onrender.com")
+    # Manejadores de comandos
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("predict", predict))
 
-        # Manejo de comandos
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("predict", predict))
-
-        # Inicia la aplicación escuchando webhooks entrantes
-        await application.run_webhook(
-            listen="0.0.0.0",  # Escuchar en todas las interfaces disponibles
-            port=8443,         # El puerto en tu servidor
-            url_path="https://initial-proyects.onrender.com",  # Ruta que Telegram enviará actualizaciones
-            webhook_url="https://initial-proyects.onrender.com"  # URL completa del webhook
-        )
-
-    # Ejecuta la función principal asíncrona
-    asyncio.run(main())
+    application.run_webhook(listen="0.0.0.0",
+                             port=int(8443),
+                             url_path="7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c")  # Reemplaza con tu token de bot
 
     
 
