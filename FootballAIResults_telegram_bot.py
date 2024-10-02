@@ -96,13 +96,13 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    home_scores = [game['score']['away'] for game in home_last_5]
-    away_scores = [game['score']['home'] for game in away_last_5]
+    home_scores = [game['score']['home'] for game in home_last_5]
+    away_scores = [game['score']['away'] for game in away_last_5]
 
     plt.figure(figsize=(10, 5))
-    plt.plot(range(1, 7), home_scores, marker='o', label=home_team_name, color='blue')
-    plt.plot(range(1, 7), away_scores, marker='o', label=away_team_name, color='red')
-    plt.xticks(range(1, 7), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
+    plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
+    plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
+    plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
     plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
