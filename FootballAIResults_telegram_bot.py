@@ -4,20 +4,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 import os
-# Configuración del webhook
-TOKEN = '7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c'  # Reemplaza con tu token real
-APP_URL = 'https://initial-proyects.onrender.com'  # Reemplaza con tu URL de Render
 
-# Establecer el webhook al inicio
-webhook_url = f"https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
-"
-response = requests.get(webhook_url)
-
-if response.status_code == 200:
-    print("Webhook establecido correctamente.")
-else:
-    print("Error al establecer el webhook:", response.text)
-    
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
 BASE_URL = 'https://api.football-data.org/v4/matches'
@@ -36,6 +23,20 @@ LEAGUES = {
 
 # Personalización de la predicción
 confidence_threshold = 0.6  # Umbral de confianza para mostrar predicciones
+
+# Configuración del webhook
+TOKEN = '7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c'  # Reemplaza con tu token real
+APP_URL = 'https://initial-proyects.onrender.com'  # Reemplaza con tu URL de Render
+
+# Establecer el webhook al inicio
+webhook_url = f"https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
+"
+response = requests.get(webhook_url)
+
+if response.status_code == 200:
+    print("Webhook establecido correctamente.")
+else:
+    print("Error al establecer el webhook:", response.text)
 
 def get_matches(season='2024'):
     headers = {
@@ -182,61 +183,40 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
         result = "Empate"
         winning_team = "Ninguno (Empate)"
 
-    # Verificar la confianza en la predicción
-    if home_win_percentage >= confidence_threshold * 100:
-        result += f" (Alta confianza en que {home_team_name} ganará)"
-    elif away_win_percentage >= confidence_threshold * 100:
-        result += f" (Alta confianza en que {away_team_name} ganará)"
-    else:
-        result += " (Confianza baja en la predicción)"
+    # Verificación de confianza
+    if home_win_percentage < confidence_threshold * 100 and away_win_percentage < confidence_threshold * 100:
+        result = "Predicción no confiable"
 
-    return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats
+    return (result, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, winning_team)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Obtener los partidos disponibles
-    matches = get_matches()
-    if matches:
-        match_list = "\n".join([f"{match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
-        await update.message.reply_text(f"Partidos disponibles:\n{match_list}")
-    else:
-        await update.message.reply_text("No se encontraron partidos.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("¡Bienvenido al bot de predicción de fútbol!")
 
-async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if len(context.args) < 2:
-        await update.message.reply_text("Uso: /predict <home_team_id> <away_team_id>")
+async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+
+    if len(args) != 2:
+        await update.message.reply_text("Uso: /predict <ID equipo local> <ID equipo visitante>")
         return
 
-    home_team_id = int(context.args[0])
-    away_team_id = int(context.args[1])
+    home_team_id = args[0]
+    away_team_id = args[1]
 
-    # Obtener estadísticas y predecir el resultado
-    result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(home_team_id, away_team_id, LEAGUES['La Liga'], "Home Team", "Away Team")
+    # Ejemplo de liga (puedes cambiar esto según tus necesidades)
+    league_id = 2014  # La Liga, por ejemplo
 
-    if result is None:
-        await update.message.reply_text("No se pudieron obtener estadísticas para los equipos.")
-        return
+    result, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, winning_team = predict_result(home_team_id, away_team_id, league_id, home_team_id, away_team_id)
 
-    # Enviar la predicción
-    prediction_message = (
-        f"Predicción: {result}\n"
-        f"Probabilidades: {home_win_percentage:.1f}% para {home_stats['team']['name']} - "
-        f"{draw_percentage:.1f}% empate - {away_win_percentage:.1f}% para {away_stats['team']['name']}\n"
-        f"Posición {home_stats['position']} - Puntos {home_stats['points']}\n"
-        f"Posición {away_stats['position']} - Puntos {away_stats['points']}"
-    )
-    await update.message.reply_text(prediction_message)
+    if result:
+        # Enviar la gráfica de probabilidades
+        buf_probabilities = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_id, away_team_id)
+        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf_probabilities, caption=f"Probabilidades:\n{result}")
 
-    # Gráfico de probabilidades
-    buf_probabilities = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, "Home Team", "Away Team")
-    await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf_probabilities)
-
-    # Gráfico de últimos 5 partidos
-    buf_last_5 = plot_last_5_games(home_last_5, away_last_5, "Home Team", "Away Team")
-    await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf_last_5)
-
-# Configuración del webhook
-TOKEN = '7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c'  # Reemplaza con tu token real
-APP_URL = 'https://initial-proyects.onrender.com'  # Reemplaza con tu URL de Render
+        # Enviar la gráfica de últimos 5 partidos
+        buf_last_5 = plot_last_5_games(home_last_5, away_last_5, home_team_id, away_team_id)
+        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf_last_5, caption="Rendimiento en los últimos 5 partidos.")
+    else:
+        await update.message.reply_text("No se pudo obtener datos para la predicción.")
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(TOKEN).build()
