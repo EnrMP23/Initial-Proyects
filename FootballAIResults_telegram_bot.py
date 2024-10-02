@@ -21,7 +21,7 @@ LEAGUES = {
     'Champions League': 2001
 }
 
-PORT = int(os.environ.get("PORT", 5000))  # Usa 5000 como puerto por defecto
+PORT = int(os.environ.get("PORT", 0.0.0.0))  # Usa 5000 como puerto por defecto
 # Personalización de la predicción
 confidence_threshold = 0.7  # Umbral de confianza para mostrar predicciones
 
