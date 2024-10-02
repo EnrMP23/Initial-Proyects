@@ -4,7 +4,20 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 import os
+# Configuración del webhook
+TOKEN = '7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c'  # Reemplaza con tu token real
+APP_URL = 'https://initial-proyects.onrender.com'  # Reemplaza con tu URL de Render
 
+# Establecer el webhook al inicio
+webhook_url = f"https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
+"
+response = requests.get(webhook_url)
+
+if response.status_code == 200:
+    print("Webhook establecido correctamente.")
+else:
+    print("Error al establecer el webhook:", response.text)
+    
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
 BASE_URL = 'https://api.football-data.org/v4/matches'
