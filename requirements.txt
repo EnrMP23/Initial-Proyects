@@ -1,6 +1,7 @@
 requests
 matplotlib
 python-telegram-bot==20.0
+gunicorn
 Flask>=2.3.3
 
 
