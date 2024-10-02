@@ -21,7 +21,7 @@ LEAGUES = {
 }
 
 # Personalización de la predicción
-confidence_threshold = 0.6  # Umbral de confianza para mostrar predicciones
+confidence_threshold = 0.65  # Umbral de confianza para mostrar predicciones
 
 def get_matches(season='2024'):
     headers = {
