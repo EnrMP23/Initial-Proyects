@@ -4,6 +4,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 
+PORT = int(os.environ.get("PORT", 5000))  # Usa 5000 como puerto por defecto
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
 BASE_URL = 'https://api.football-data.org/v4/matches'
