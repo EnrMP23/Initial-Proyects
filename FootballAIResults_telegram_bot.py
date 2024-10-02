@@ -108,12 +108,12 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     plt.figure(figsize=(12, 6))
 
     # Graficar goles anotados
-    plt.plot(range(1, 6), home_scores, marker='o', label=f'{home_team_name} (Anotados)', color='blue')
-    plt.plot(range(1, 6), away_scores, marker='o', label=f'{away_team_name} (Anotados)', color='red')
+    plt.plot(range(1, 6), home_scores, marker='o', label=f'{away_team_name} (Anotados)', color='blue')
+    plt.plot(range(1, 6), away_scores, marker='o', label=f'{home_team_name} (Anotados)', color='red')
 
     # Graficar goles recibidos
-    plt.plot(range(1, 6), home_conceded, marker='x', linestyle='--', label=f'{home_team_name} (Recibidos)', color='cyan')
-    plt.plot(range(1, 6), away_conceded, marker='x', linestyle='--', label=f'{away_team_name} (Recibidos)', color='orange')
+    plt.plot(range(1, 6), home_conceded, marker='x', linestyle='--', label=f'{away_team_name} (Recibidos)', color='cyan')
+    plt.plot(range(1, 6), away_conceded, marker='x', linestyle='--', label=f'{home_team_name} (Recibidos)', color='orange')
 
     # Añadir etiquetas y título
     plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
