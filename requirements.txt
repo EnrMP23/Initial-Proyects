@@ -3,7 +3,7 @@ matplotlib
 python-telegram-bot==20.0
 gunicorn
 Flask>=2.3.3
-pip install python-telegram-bot[webhooks]
+python-telegram-bot[webhooks]
 
 
 
