@@ -59,7 +59,6 @@ def get_team_stats(team_id, league_id):
                     'goalsAgainst': standing.get('goalsAgainst', 0),
                     'goalDifference': standing.get('goalsFor', 0) - standing.get('goalsAgainst', 0),
                     'matchesPlayed': standing.get('matchesPlayed', 1),  # Usar 1 para evitar división por cero
-                    'last5Games': standing.get('last5Games', [])
                 }
 
     print(f"Error al obtener estadísticas del equipo {team_id}. Estado: {response.status_code}")
@@ -95,23 +94,6 @@ def get_last_5_games(team_id):
         print(f"Error al obtener los últimos 5 partidos del equipo {team_id}. Estado: {response.status_code}")
         return []
 
-def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name):
-    labels = [home_team_name, 'Empate', away_team_name]
-    sizes = [home_win_percentage, draw_percentage, away_win_percentage]
-    colors = ['#ff9999', '#66b3ff', '#99ff99']
-
-    plt.figure(figsize=(8, 5))
-    plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140)
-    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-    plt.title('Probabilidades de Resultado')
-
-    # Guardar la gráfica en un buffer
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)  # Volver al inicio del buffer
-    plt.close()  # Cerrar la figura para liberar memoria
-    return buf
-
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     home_scores = [game['homeScore'] for game in home_last_5]
     away_scores = [game['awayScore'] for game in away_last_5]
@@ -138,7 +120,7 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
     away_stats = get_team_stats(away_team_id, league_id)
 
     if not home_stats or not away_stats:
-        return None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None
 
     # Obtener los últimos 5 partidos
     home_last_5 = get_last_5_games(home_team_id)
@@ -200,10 +182,6 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
 async def match_prediction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     match_id = context.args[0]
 
-    # Aquí iría tu lógica para buscar el partido con base en el match_id
-    # Puedes usar get_matches() para obtener todos los partidos y buscar por match_id
-    # Ejemplo de búsqueda:
-
     matches = get_matches()  # Obtiene todos los partidos
     match = next((m for m in matches if str(m['id']) == match_id), None)
 
@@ -234,16 +212,7 @@ async def match_prediction(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     response += f"Predicción: {result}\n"
     response += f"Estimación de goles: {home_team_name} {estimated_home_goals:.1f} - {estimated_away_goals:.1f} {away_team_name}\n"
 
-    # Enviar el mensaje al usuario
     await update.message.reply_text(response)
-
-    # Gráficas
-    pie_chart = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
-    last_5_games_chart = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
-
-    # Enviar las gráficas
-    await update.message.reply_photo(photo=pie_chart)
-    await update.message.reply_photo(photo=last_5_games_chart)
 
     # Información de los últimos 5 partidos
     home_last_games_text = (
@@ -272,3 +241,4 @@ if __name__ == '__main__':
 
     # Iniciar la aplicación
     application.run_polling()
+
