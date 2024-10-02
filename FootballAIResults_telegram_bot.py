@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
-from flask import Flask
-import threading
 
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
@@ -24,20 +22,6 @@ LEAGUES = {
 
 # Personalización de la predicción
 confidence_threshold = 0.6  # Umbral de confianza para mostrar predicciones
-
-# Flask app para mantener el bot activo
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot está activo"
-
-def run():
-    app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    t = threading.Thread(target=run)
-    t.start()
 
 def get_matches(season='2024'):
     headers = {
@@ -86,10 +70,27 @@ def get_last_5_games(team_id):
         'X-Auth-Token': API_KEY
     }
 
+    # Realizamos la solicitud de los últimos 5 partidos finalizados
     response = requests.get(f"{TEAMS_URL}/{team_id}/matches?status=FINISHED", headers=headers)
+    
     if response.status_code == 200:
-        matches = response.json().get('matches', [])[-5:]  # Obtener solo los últimos 5 partidos
-        return [{'homeTeam': match['homeTeam']['name'], 'awayTeam': match['awayTeam']['name'], 'score': match['score']['fullTime']} for match in matches]
+        matches = response.json().get('matches', [])
+        last_5_matches = matches[-5:]  # Obtenemos solo los últimos 5 partidos
+
+        # Procesamos los últimos 5 partidos con más detalles
+        games_data = []
+        for match in last_5_matches:
+            game_info = {
+                'date': match['utcDate'],  # Fecha del partido
+                'homeTeam': match['homeTeam']['name'],
+                'awayTeam': match['awayTeam']['name'],
+                'homeScore': match['score']['fullTime']['homeTeam'],
+                'awayScore': match['score']['fullTime']['awayTeam'],
+                'location': 'Home' if match['homeTeam']['id'] == team_id else 'Away'
+            }
+            games_data.append(game_info)
+        
+        return games_data
     else:
         print(f"Error al obtener los últimos 5 partidos del equipo {team_id}. Estado: {response.status_code}")
         return []
@@ -112,14 +113,15 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    home_scores = [game['score']['home'] for game in home_last_5]
-    away_scores = [game['score']['away'] for game in away_last_5]
+    home_scores = [game['homeScore'] for game in home_last_5]
+    away_scores = [game['awayScore'] for game in away_last_5]
 
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
     plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
+    
     plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
-    plt.title('Rendimiento en los Últimos 5 Partidos')
+    plt.title(f'Rendimiento de los Últimos 5 Partidos: {home_team_name} vs {away_team_name}')
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
     plt.legend()
@@ -127,8 +129,8 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     # Guardar la gráfica en un buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
-    buf.seek(0)  # Volver al inicio del buffer
-    plt.close()  # Cerrar la figura para liberar memoria
+    buf.seek(0)
+    plt.close()  # Cerramos la figura para liberar memoria
     return buf
 
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
@@ -189,55 +191,84 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
         result += f" (Alta confianza en que {home_team_name} ganará)"
     elif away_win_percentage >= confidence_threshold * 100:
         result += f" (Alta confianza en que {away_team_name} ganará)"
-    else:
-        result += " (Confianza baja en la predicción)"
 
-    return (result, home_win_percentage, draw_percentage, away_win_percentage, winning_team, home_last_5, away_last_5, total_goals)
+    return (home_win_percentage, draw_percentage, away_win_percentage, 
+            estimated_home_goals, estimated_away_goals, 
+            home_last_5, away_last_5, result)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"Hola {update.effective_user.first_name}, este bot te ayuda a predecir partidos de fútbol basados en estadísticas y datos históricos.")
+# Manejo del comando /match
+async def match_prediction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    match_id = context.args[0]
 
-async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) < 2:
-        await update.message.reply_text("Por favor, proporciona los nombres de los equipos (Ejemplo: /predict Barcelona Real Madrid)")
+    # Aquí iría tu lógica para buscar el partido con base en el match_id
+    # Puedes usar get_matches() para obtener todos los partidos y buscar por match_id
+    # Ejemplo de búsqueda:
+
+    matches = get_matches()  # Obtiene todos los partidos
+    match = next((m for m in matches if str(m['id']) == match_id), None)
+
+    if not match:
+        await update.message.reply_text(f"No se encontró el partido con ID {match_id}.")
         return
 
-    home_team_name = context.args[0]
-    away_team_name = context.args[1]
+    home_team_id = match['homeTeam']['id']
+    away_team_id = match['awayTeam']['id']
+    home_team_name = match['homeTeam']['name']
+    away_team_name = match['awayTeam']['name']
+    league_id = match['competition']['id']
 
-    home_team_id = None
-    away_team_id = None
-    league_id = None
+    (home_win_percentage, draw_percentage, away_win_percentage,
+     estimated_home_goals, estimated_away_goals, 
+     home_last_5, away_last_5, result) = predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name)
 
-    # Lógica para asignar team_id y league_id según los equipos introducidos
-    # Puedes adaptar esta parte dependiendo de cómo manejes la asignación de IDs de equipo y liga
+    if not home_win_percentage:
+        await update.message.reply_text("Hubo un problema al predecir el resultado. Inténtalo de nuevo.")
+        return
 
-    result, home_win_percentage, draw_percentage, away_win_percentage, winning_team, home_last_5, away_last_5, total_goals = predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name)
+    # Mensaje de respuesta
+    response = f"Partido: {home_team_name} vs {away_team_name}\n"
+    response += f"Estadísticas del partido:\n"
+    response += f"Probabilidad de victoria {home_team_name}: {home_win_percentage:.2f}%\n"
+    response += f"Probabilidad de empate: {draw_percentage:.2f}%\n"
+    response += f"Probabilidad de victoria {away_team_name}: {away_win_percentage:.2f}%\n"
+    response += f"Predicción: {result}\n"
+    response += f"Estimación de goles: {home_team_name} {estimated_home_goals:.1f} - {estimated_away_goals:.1f} {away_team_name}\n"
 
-    if result:
-        await update.message.reply_text(f"Predicción: {result}")
+    # Enviar el mensaje al usuario
+    await update.message.reply_text(response)
 
-        # Enviar gráfica de probabilidades
-        buf = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
-        await context.bot.send_photo(chat_id=update.message.chat_id, photo=buf)
+    # Gráficas
+    pie_chart = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
+    last_5_games_chart = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
 
-        # Enviar gráfica de últimos 5 partidos
-        buf_last5 = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
-        await context.bot.send_photo(chat_id=update.message.chat_id, photo=buf_last5)
+    # Enviar las gráficas
+    await update.message.reply_photo(photo=pie_chart)
+    await update.message.reply_photo(photo=last_5_games_chart)
 
-    else:
-        await update.message.reply_text(f"No se pudo generar una predicción para el partido entre {home_team_name} y {away_team_name}. Revisa si los equipos están correctos.")
+    # Información de los últimos 5 partidos
+    home_last_games_text = (
+        f"\nÚltimos 5 partidos de {home_team_name}:\n\n" + 
+        "\n".join([f"{game['date'][:10]}: {game['homeTeam']} {game['homeScore']} - {game['awayScore']} {game['awayTeam']} (Local: {game['location']})"
+                   for game in home_last_5])
+    )
+    away_last_games_text = (
+        f"\n\nÚltimos 5 partidos de {away_team_name}:\n\n" + 
+        "\n".join([f"{game['date'][:10]}: {game['homeTeam']} {game['homeScore']} - {game['awayScore']} {game['awayTeam']} (Local: {game['location']})"
+                   for game in away_last_5])
+    )
+    await update.message.reply_text(home_last_games_text + away_last_games_text)
+
+# Configuración del bot
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text('¡Hola! Usa el comando /match <id> para obtener una predicción de partido.')
 
 if __name__ == '__main__':
-    # Inicializar el bot
-    application = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()
+    # Configuración de la aplicación
+    application = ApplicationBuilder().token('7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c').build()
 
-    # Comandos
+    # Configurar los comandos del bot
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("predict", predict))
+    application.add_handler(CommandHandler("match", match_prediction))
 
-    # Mantener el bot activo con Flask y UptimeRobot
-    keep_alive()
-
-    # Iniciar el polling del bot
+    # Iniciar la aplicación
     application.run_polling()
