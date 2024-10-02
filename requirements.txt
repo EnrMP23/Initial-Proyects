@@ -1,4 +1,5 @@
 requests
 matplotlib
 python-telegram-bot==20.0
+Flask==2.2.3
 
