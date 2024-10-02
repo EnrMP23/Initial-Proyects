@@ -244,6 +244,4 @@ if __name__ == '__main__':
     print('Bot iniciado SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUH')
     application.run_polling()
     
-    import asyncio
-    asyncio.run(main())
 
