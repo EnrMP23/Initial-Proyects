@@ -72,6 +72,32 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     plt.close()  
     return buf
 
+# Función para obtener y graficar el rendimiento de los últimos 5 partidos
+def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
+    home_scores = [game['score']['fullTime']['homeTeam'] for game in home_last_5]
+    away_scores = [game['score']['fullTime']['awayTeam'] for game in away_last_5]
+    
+    # Rondas de los partidos (1 a 5)
+    rounds = [1, 2, 3, 4, 5]
+    
+    # Crear la gráfica de líneas
+    plt.figure(figsize=(10, 6))
+    plt.plot(rounds, home_scores, marker='o', label=f'{home_team_name} - Rendimiento', color='blue')
+    plt.plot(rounds, away_scores, marker='o', label=f'{away_team_name} - Rendimiento', color='red')
+    
+    plt.title('Rendimiento de los Últimos 5 Partidos')
+    plt.xlabel('Últimos 5 Partidos')
+    plt.ylabel('Goles Marcados')
+    plt.xticks(rounds, ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
+    plt.legend()
+
+    # Guardar la gráfica en un buffer para enviarla a través del bot
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)  # Volver al inicio del buffer
+    plt.close()  # Cerrar la figura para liberar memoria
+    return buf
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     matches = get_matches()
     if matches:
@@ -106,6 +132,9 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
             prob_buf = plot_probabilities(win_percentage, draw_percentage, lose_percentage, home_team_name, away_team_name)
             await update.message.reply_photo(photo=prob_buf)
+
+            last_5_games_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+            await update.message.reply_photo(photo=last_5_games_buf)
     else:
         await update.message.reply_text("Error al obtener los datos del partido.")
 
@@ -121,3 +150,4 @@ if __name__ == '__main__':
         url_path="/webhook",
         webhook_url=WEBHOOK_URL
     )
+
