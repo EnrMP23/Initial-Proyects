@@ -134,8 +134,6 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) != 1:
         await update.message.reply_text("Por favor proporciona un ID de partido válido.")
         return
-    else:
-        return No Data Working
 
     match_id = int(context.args[0])
     match_response = requests.get(f"{BASE_URL}/{match_id}", headers={'X-Auth-Token': API_KEY})
