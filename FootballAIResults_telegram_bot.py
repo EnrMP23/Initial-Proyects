@@ -95,33 +95,46 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
 
+import matplotlib.pyplot as plt
+import io
+
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    # Obtener los goles anotados por RB Leipzig en los últimos 5 partidos
-    home_scores = [game['score']['home'] for game in home_last_5]
-    away_scores = [game['score']['away'] for game in away_last_5]
+    # Obtener los goles anotados y recibidos por cada equipo en sus últimos 5 partidos
+    home_scored = [game['score']['home'] for game in home_last_5]
+    home_conceded = [game['score']['away'] for game in home_last_5]
+    away_scored = [game['score']['away'] for game in away_last_5]
+    away_conceded = [game['score']['home'] for game in away_last_5]
 
-    # Sumar los goles anotados por cada equipo en sus últimos 5 partidos
-    total_home_scores = [0] * 5
-    total_away_scores = [0] * 5
+    # Crear la figura y el eje
+    plt.figure(figsize=(12, 6))
 
-    # Calcular los goles anotados en los últimos 5 partidos
-    for i in range(5):
-        total_home_scores[i] = home_scores[i]  # Goles anotados en casa
-        total_away_scores[i] = away_scores[i]  # Goles anotados fuera
+    # Graficar los goles anotados y recibidos por el equipo local
+    plt.plot(range(1, 6), home_scored, marker='o', label=f'{home_team_name} (Anotados)', color='blue', linestyle='-')
+    plt.plot(range(1, 6), home_conceded, marker='x', label=f'{home_team_name} (Recibidos)', color='lightblue', linestyle='--')
 
-    # Etiquetas para los partidos
-    matches = ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5']
+    # Graficar los goles anotados y recibidos por el equipo visitante
+    plt.plot(range(1, 6), away_scored, marker='o', label=f'{away_team_name} (Anotados)', color='red', linestyle='-')
+    plt.plot(range(1, 6), away_conceded, marker='x', label=f'{away_team_name} (Recibidos)', color='salmon', linestyle='--')
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(matches, total_home_scores, marker='o', label=home_team_name, color='blue')
-    plt.plot(matches, total_away_scores, marker='o', label=away_team_name, color='red')
+    # Añadir etiquetas a los puntos
+    for i, score in enumerate(home_scored):
+        plt.text(i + 1, score + 0.1, str(score), ha='center', color='blue')
+    for i, score in enumerate(home_conceded):
+        plt.text(i + 1, score + 0.1, str(score), ha='center', color='lightblue')
+    for i, score in enumerate(away_scored):
+        plt.text(i + 1, score + 0.1, str(score), ha='center', color='red')
+    for i, score in enumerate(away_conceded):
+        plt.text(i + 1, score + 0.1, str(score), ha='center', color='salmon')
 
-    # Títulos y etiquetas
+    # Configurar los ejes
+    plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
     plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
-    plt.ylabel('Goles Anotados')
+    plt.ylabel('Goles')
+    plt.ylim(0, max(max(home_scored), max(home_conceded), max(away_scored), max(away_conceded)) + 1)  # Ajustar el límite del eje y
+
+    # Añadir la leyenda
     plt.legend()
-    plt.ylim(0, max(max(total_home_scores), max(total_away_scores)) + 1)  # Ajustar límites del eje y
 
     # Guardar la gráfica en un buffer
     buf = io.BytesIO()
@@ -129,6 +142,7 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     buf.seek(0)  # Volver al inicio del buffer
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
+
 
 
 
