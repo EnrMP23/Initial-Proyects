@@ -98,6 +98,30 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
 
+def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
+    # Simulación simple de predicción (esto debería ser reemplazado por lógica de IA o análisis avanzado)
+    home_stats = get_team_stats(home_team_id, league_id)
+    away_stats = get_team_stats(away_team_id, league_id)
+
+    if not home_stats or not away_stats:
+        return None, None, 0, 0, 0, None, None, None, None
+
+    home_win_chance = (home_stats['points'] / home_stats['matchesPlayed']) / 3  # Simulación de probabilidad
+    away_win_chance = (away_stats['points'] / away_stats['matchesPlayed']) / 3
+    draw_chance = 1 - (home_win_chance + away_win_chance)
+
+    home_last_5 = home_stats.get('last5Games', [])
+    away_last_5 = away_stats.get('last5Games', [])
+
+    if home_win_chance > away_win_chance:
+        result = f"El equipo local ({home_team_name}) tiene más probabilidades de ganar."
+    elif away_win_chance > home_win_chance:
+        result = f"El equipo visitante ({away_team_name}) tiene más probabilidades de ganar."
+    else:
+        result = "Es probable que el partido termine en empate."
+
+    return result, home_team_name, home_win_chance * 100, draw_chance * 100, away_win_chance * 100, home_last_5, away_last_5, home_stats, away_stats
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     matches = get_matches()
     if matches:
@@ -110,6 +134,8 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) != 1:
         await update.message.reply_text("Por favor proporciona un ID de partido válido.")
         return
+    else:
+        return No Data Working
 
     match_id = int(context.args[0])
     match_response = requests.get(f"{BASE_URL}/{match_id}", headers={'X-Auth-Token': API_KEY})
