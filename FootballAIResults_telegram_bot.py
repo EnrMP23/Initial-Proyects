@@ -95,13 +95,10 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
 
-import matplotlib.pyplot as plt
-import io
-
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     # Extraer los goles anotados y recibidos
-    home_scores = [game['score']['home'] for game in home_last_5]
-    away_scores = [game['score']['away'] for game in away_last_5]
+    home_scores = [game['score']['home'] for game in home_last_5]  # Goles anotados por el equipo local
+    away_scores = [game['score']['away'] for game in away_last_5]  # Goles anotados por el equipo visitante
     
     # Calcular goles recibidos
     home_conceded = [game['score']['away'] for game in home_last_5]  # Goles recibidos por el equipo local
