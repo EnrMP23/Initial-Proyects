@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
+import asyncio
 
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
@@ -22,21 +23,6 @@ LEAGUES = {
 
 # Personalización de la predicción
 confidence_threshold = 0.65  # Umbral de confianza para mostrar predicciones
-
-# Initialize the bot application
-application = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()
-
-# Set the webhook URL (this should be a URL publicly accessible from the internet)
-application.bot.set_webhook(url="https://initial-proyects.onrender.com")
-
-# Start the application listening for incoming webhooks
-application.run_webhook(
-    listen="0.0.0.0",  # Listen on all available interfaces
-    port=8443,         # The port on your server
-    url_path="your-webhook-url",  # Path that Telegram will send updates to
-    webhook_url="https://initial-proyects.onrender.com"  # Full webhook URL
-)
-
 
 def get_matches(season='2024'):
     headers = {
@@ -111,7 +97,6 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    # Ensure the score extraction is correct for both home and away teams
     home_scores = [game['score']['home'] for game in home_last_5]  # Extract home team scores
     away_scores = [game['score']['away'] for game in away_last_5]  # Extract away team scores
 
@@ -187,67 +172,78 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
 
     # Verificar la confianza en la predicción
     if home_win_percentage >= confidence_threshold * 100:
-        result += f" (Alta confianza en la victoria de {home_team_name})"
+        result += f" (Alta confianza en que {home_team_name} ganará)"
     elif away_win_percentage >= confidence_threshold * 100:
-        result += f" (Alta confianza en la victoria de {away_team_name})"
+        result += f" (Alta confianza en que {away_team_name} ganará)"
     else:
-        result += " (Baja confianza en la predicción)"
+        result += " (Confianza baja en la predicción)"
 
-    return result, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5
-
+    return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Obtener los partidos disponibles
     matches = get_matches()
     if matches:
-        match_list = "\n".join([f"{match['id']}: {match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
-        await update.message.reply_text(f"Aquí está la lista de partidos disponibles:\n{match_list}\n\nUsa /predict <match_id> para predecir el resultado de un partido.")
+        match_list = "\n".join([f"ID: {match['id']} - {match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
+        await update.message.reply_text(f"Partidos disponibles:\n{match_list}\n\nEscribe el ID del partido para predecir.")
     else:
-        await update.message.reply_text("No hay partidos disponibles en este momento.")
-
+        await update.message.reply_text("No se encontraron partidos disponibles.")
 
 async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if len(context.args) != 1:
-        await update.message.reply_text("Por favor, proporciona un ID de partido válido.")
-        return
+    if context.args:
+        match_id = int(context.args[0])  # ID del partido proporcionado por el usuario
+        headers = {
+            'X-Auth-Token': API_KEY
+        }
+        response = requests.get(f"{BASE_URL}/{match_id}", headers=headers)
 
-    match_id = int(context.args[0])
-    match_response = requests.get(f"{BASE_URL}/{match_id}", headers={'X-Auth-Token': API_KEY})
+        if response.status_code == 200:
+            match_info = response.json()
+            home_team_id = match_info['homeTeam']['id']
+            away_team_id = match_info['awayTeam']['id']
+            home_team_name = match_info['homeTeam']['name']
+            away_team_name = match_info['awayTeam']['name']
 
-    if match_response.status_code == 200:
-        match_data = match_response.json()
-        home_team_id = match_data['homeTeam']['id']
-        away_team_id = match_data['awayTeam']['id']
-        league_id = match_data['competition']['id']
-        home_team_name = match_data['homeTeam']['name']
-        away_team_name = match_data['awayTeam']['name']
+            result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(home_team_id, away_team_id, match_info['league']['id'], home_team_name, away_team_name)
 
-        result, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5 = predict_result(
-            home_team_id, away_team_id, league_id, home_team_name, away_team_name)
+            if result:
+                # Generar la gráfica de probabilidades
+                buf = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
+                await update.message.reply_photo(photo=buf)
 
-        if result:
-            await update.message.reply_text(result)
+                # Generar la gráfica de los últimos 5 partidos
+                buf_last_5 = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+                await update.message.reply_photo(photo=buf_last_5)
 
-            # Send the probability pie chart
-            buf = plot_probabilities(win_percentage, draw_percentage, lose_percentage, home_team_name, away_team_name)
-            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf)
-
-            # Send the last 5 games performance chart
-            buf_last_5 = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
-            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=buf_last_5)
+                await update.message.reply_text(f"Predicción: {result}\nEquipo ganador probable: {winning_team}")
+                await update.message.reply_text(f"Estadísticas de {home_team_name}: {home_stats}\nEstadísticas de {away_team_name}: {away_stats}")
+            else:
+                await update.message.reply_text("No se pudo realizar la predicción.")
         else:
-            await update.message.reply_text("No se pudo realizar la predicción debido a la falta de datos.")
-    else:
-        await update.message.reply_text("Error al obtener datos del partido. Asegúrate de que el ID del partido es válido.")
+            await update.message.reply_text("Error al obtener información del partido.")
 
+if __name__ == '__main__':
+    async def main():
+        # Inicializa la aplicación del bot
+        application = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()
 
-# Register command handlers
-application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("predict", predict))
+        # Establece la URL del webhook
+        await application.bot.set_webhook(url="https://initial-proyects.onrender.com")
 
-# Start the application
-if __name__ == "__main__":
-    print('¡EXITO Y SUERTE!')
-    application.run_polling()  # This line can be adjusted based on your webhook settings
+        # Manejo de comandos
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CommandHandler("predict", predict))
+
+        # Inicia la aplicación escuchando webhooks entrantes
+        await application.run_webhook(
+            listen="0.0.0.0",  # Escuchar en todas las interfaces disponibles
+            port=8443,         # El puerto en tu servidor
+            url_path="https://initial-proyects.onrender.com",  # Ruta que Telegram enviará actualizaciones
+            webhook_url="https://initial-proyects.onrender.com"  # URL completa del webhook
+        )
+
+    # Ejecuta la función principal asíncrona
+    asyncio.run(main())
 
     
 
