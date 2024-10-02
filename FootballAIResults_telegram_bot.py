@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
+import os
 
-PORT = int(os.environ.get("PORT", 5000))  # Usa 5000 como puerto por defecto
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
 BASE_URL = 'https://api.football-data.org/v4/matches'
@@ -21,6 +21,7 @@ LEAGUES = {
     'Champions League': 2001
 }
 
+PORT = int(os.environ.get("PORT", 5000))  # Usa 5000 como puerto por defecto
 # Personalización de la predicción
 confidence_threshold = 0.7  # Umbral de confianza para mostrar predicciones
 
