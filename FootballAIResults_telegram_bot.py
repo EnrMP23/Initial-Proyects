@@ -99,42 +99,38 @@ import matplotlib.pyplot as plt
 import io
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    # Obtener los goles anotados y recibidos por cada equipo en sus últimos 5 partidos
-    home_scored = [game['score']['home'] for game in home_last_5]
-    home_conceded = [game['score']['away'] for game in home_last_5]
-    away_scored = [game['score']['away'] for game in away_last_5]
-    away_conceded = [game['score']['home'] for game in away_last_5]
+    # Extraer los goles anotados y recibidos
+    home_scores = [game['score']['home'] for game in home_last_5]
+    away_scores = [game['score']['away'] for game in away_last_5]
+    
+    # Calcular goles recibidos
+    home_conceded = [game['score']['away'] for game in home_last_5]  # Goles recibidos por el equipo local
+    away_conceded = [game['score']['home'] for game in away_last_5]  # Goles recibidos por el equipo visitante
 
-    # Crear la figura y el eje
+    # Crear la figura
     plt.figure(figsize=(12, 6))
 
-    # Graficar los goles anotados y recibidos por el equipo local
-    plt.plot(range(1, 6), home_scored, marker='o', label=f'{home_team_name} (Anotados)', color='blue', linestyle='-')
-    plt.plot(range(1, 6), home_conceded, marker='x', label=f'{home_team_name} (Recibidos)', color='lightblue', linestyle='--')
+    # Graficar goles anotados
+    plt.plot(range(1, 6), home_scores, marker='o', label=f'{home_team_name} (Anotados)', color='blue')
+    plt.plot(range(1, 6), away_scores, marker='o', label=f'{away_team_name} (Anotados)', color='red')
 
-    # Graficar los goles anotados y recibidos por el equipo visitante
-    plt.plot(range(1, 6), away_scored, marker='o', label=f'{away_team_name} (Anotados)', color='red', linestyle='-')
-    plt.plot(range(1, 6), away_conceded, marker='x', label=f'{away_team_name} (Recibidos)', color='salmon', linestyle='--')
+    # Graficar goles recibidos
+    plt.plot(range(1, 6), home_conceded, marker='x', linestyle='--', label=f'{home_team_name} (Recibidos)', color='cyan')
+    plt.plot(range(1, 6), away_conceded, marker='x', linestyle='--', label=f'{away_team_name} (Recibidos)', color='orange')
 
-    # Añadir etiquetas a los puntos
-    for i, score in enumerate(home_scored):
-        plt.text(i + 1, score + 0.1, str(score), ha='center', color='blue')
-    for i, score in enumerate(home_conceded):
-        plt.text(i + 1, score + 0.1, str(score), ha='center', color='lightblue')
-    for i, score in enumerate(away_scored):
-        plt.text(i + 1, score + 0.1, str(score), ha='center', color='red')
-    for i, score in enumerate(away_conceded):
-        plt.text(i + 1, score + 0.1, str(score), ha='center', color='salmon')
-
-    # Configurar los ejes
+    # Añadir etiquetas y título
     plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
     plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
-    plt.ylim(0, max(max(home_scored), max(home_conceded), max(away_scored), max(away_conceded)) + 1)  # Ajustar el límite del eje y
-
-    # Añadir la leyenda
     plt.legend()
+
+    # Anotar los goles en cada punto
+    for i in range(5):
+        plt.annotate(home_scores[i], (i + 1, home_scores[i]), textcoords="offset points", xytext=(0,5), ha='center', color='blue')
+        plt.annotate(away_scores[i], (i + 1, away_scores[i]), textcoords="offset points", xytext=(0,5), ha='center', color='red')
+        plt.annotate(home_conceded[i], (i + 1, home_conceded[i]), textcoords="offset points", xytext=(0,-15), ha='center', color='cyan')
+        plt.annotate(away_conceded[i], (i + 1, away_conceded[i]), textcoords="offset points", xytext=(0,-15), ha='center', color='orange')
 
     # Guardar la gráfica en un buffer
     buf = io.BytesIO()
@@ -142,8 +138,6 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     buf.seek(0)  # Volver al inicio del buffer
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
-
-
 
 
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
@@ -274,4 +268,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("predict", predict))
     print('Bot iniciado SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUH')
     application.run_polling()
+    
     
