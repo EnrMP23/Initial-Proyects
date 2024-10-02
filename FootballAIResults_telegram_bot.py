@@ -246,10 +246,10 @@ if __name__ == '__main__':
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("predict", predict))
-    print('siuuuuuuuuuuuuuh')
-
+    print('SIUUUUUUUUH')
     application.run_webhook(
         listen="0.0.0.0",
         port=8443,
         url_path="/webhook",
         webhook_url=WEBHOOK_URL
+    )
