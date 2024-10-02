@@ -203,7 +203,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="No hay partidos disponibles para predecir en este momento.")
 
 if __name__ == '__main__':
-    app = ApplicationBuilder().token("your_bot_token").build()
+    app = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()
 
     app.add_handler(CommandHandler("start", start))
 
