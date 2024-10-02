@@ -3,10 +3,14 @@ import matplotlib.pyplot as plt
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
-from telegram.ext import Updater
+from telegram.ext import ApplicationBuilder
 
-updater = Updater(token="7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c", request_kwargs={'read_timeout': 10, 'connect_timeout': 10})
-updater.start_polling(timeout=60)  # Timeout for long-polling request
+# Create the application using ApplicationBuilder
+application = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()
+
+# Start polling
+application.run_polling()
+
 
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
