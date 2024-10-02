@@ -96,24 +96,27 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    home_scores = [game['score']['home'] for game in home_last_5]
-    away_scores = [game['score']['away'] for game in away_last_5]
+    # Ensure the score extraction is correct for both home and away teams
+    home_scores = [game['score']['homeTeam'] for game in home_last_5]  # Extract home team scores
+    away_scores = [game['score']['awayTeam'] for game in away_last_5]  # Extract away team scores
 
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
     plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
+    
     plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
     plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
     plt.legend()
-
-    # Guardar la gráfica en un buffer
+    
+    # Save the plot in a buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
-    buf.seek(0)  # Volver al inicio del buffer
-    plt.close()  # Cerrar la figura para liberar memoria
+    buf.seek(0)  # Go back to the beginning of the buffer
+    plt.close()  # Close the figure to free memory
     return buf
+
 
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
     home_stats = get_team_stats(home_team_id, league_id)
