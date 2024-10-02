@@ -18,7 +18,8 @@ def webhook():
 API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "7dcb5906ce9b48cf9becc41685b38867")  # API key de football-data.org
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c")  # Token de Telegram
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://initial-proyects.onrender.com/webhook")  # URL del webhook
-response = requests.post(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook', json={'url': WEBHOOK_URL})
+response = requests.post(f'https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
+', json={'url': WEBHOOK_URL})
 
 if response.status_code == 200:
     print('Webhook configurado correctamente.')
