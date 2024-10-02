@@ -5,6 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 import os
 from flask import Flask
+import asyncio
 
 app = Flask(__name__)
 
@@ -12,9 +13,19 @@ app = Flask(__name__)
 def home():
     return '¡Hola! Este es el inicio de tu bot de Telegram.'
 
+async def main():
+    application = ApplicationBuilder().token('7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c').build()  # Reemplaza con el token de tu bot
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("predict", predict))
+    await application.initialize()
+    print('Bot iniciado SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUH')
+    await application.start_polling()
+
 if __name__ == '__main__':
     PORT = int(os.environ.get("PORT", 5000))  # Usa 5000 como puerto por defecto
-    app.run(host='0.0.0.0', port=PORT)  # Asegúrate de que esté en host='0.0.0.0'
+    loop = asyncio.get_event_loop()
+    loop.create_task(main())
+    app.run(host='0.0.0.0', port=PORT)
 
 
 # Configura tu clave API y los endpoints
