@@ -4,27 +4,18 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 import os
-from flask import Flask, request
+from flask import Flask
+
 app = Flask(__name__)
 
-# Configura el puerto
-PORT = int(os.environ.get("PORT", 5000))  # Usa 5000 como puerto por defecto
-
-# Agrega tu lógica de bot aquí...
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("¡Hola! Estoy activo.")
-
-# Otras funciones y handlers...
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    update = request.get_json()
-    ApplicationBuilder().token('YOUR_BOT_TOKEN').build().process_update(update)
-    return '', 200
+@app.route('/')
+def home():
+    return '¡Hola! Este es el inicio de tu bot de Telegram.'
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT)
+    PORT = int(os.environ.get("PORT", 5000))  # Usa 5000 como puerto por defecto
+    app.run(host='0.0.0.0', port=PORT)  # Asegúrate de que esté en host='0.0.0.0'
+
 
 # Configura tu clave API y los endpoints
 API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
