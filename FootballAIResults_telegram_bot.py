@@ -98,35 +98,32 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     home_scores = [game['score']['home'] for game in home_last_5]
     away_scores = [game['score']['away'] for game in away_last_5]
-    match_dates = [f"Partido {i+1}" for i in range(5)]  # Asumiendo que tienes 5 partidos
+
+    # Asegúrate de que la longitud de las listas sea 5
+    if len(home_scores) < 5 or len(away_scores) < 5:
+        print("Error: No se han obtenido suficientes partidos para graficar.")
+        return None
 
     plt.figure(figsize=(10, 5))
     
-    # Graficar el rendimiento
-    plt.plot(range(1, 6), home_scores, marker='o', label=f'{home_team_name} (Local)', color='blue')
-    plt.plot(range(1, 6), away_scores, marker='o', label=f'{away_team_name} (Visitante)', color='red')
+    # Graficar las puntuaciones de cada equipo
+    plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
+    plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
     
-    # Añadir anotaciones para los resultados
-    for i in range(5):
-        plt.annotate(home_scores[i], (i + 1, home_scores[i]), textcoords="offset points", xytext=(0,10), ha='center')
-        plt.annotate(away_scores[i], (i + 1, away_scores[i]), textcoords="offset points", xytext=(0,-15), ha='center')
-
-    plt.xticks(range(1, 6), match_dates)
-    plt.title('Rendimiento en Goles de los Últimos 5 Partidos')
+    # Añadir etiquetas y título
+    plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
+    plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
-    plt.ylabel('Goles Anotados')
+    plt.ylabel('Goles')
     plt.legend()
     
-    # Líneas de referencia del promedio
-    plt.axhline(y=sum(home_scores)/len(home_scores), color='blue', linestyle='--', label='Promedio Local')
-    plt.axhline(y=sum(away_scores)/len(away_scores), color='red', linestyle='--', label='Promedio Visitante')
-
     # Guardar la gráfica en un buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     buf.seek(0)  # Volver al inicio del buffer
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
+
 
 
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
