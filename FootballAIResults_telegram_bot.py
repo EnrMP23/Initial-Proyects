@@ -137,6 +137,7 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     match_id = int(context.args[0])
     match_response = requests.get(f"{BASE_URL}/{match_id}", headers={'X-Auth-Token': API_KEY})
+    
     if match_response.status_code == 200:
         match_data = match_response.json()
         home_team_id = match_data['homeTeam']['id']
@@ -152,13 +153,30 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             league_info = f"{home_team_name} (Posición: {home_stats['position']}, Puntos: {home_stats['points']}) vs {away_team_name} (Posición: {away_stats['position']}, Puntos: {away_stats['points']})"
             await update.message.reply_text(league_info)
 
+            # Mensaje sobre la predicción
             await update.message.reply_text(f"Predicción: {result}")
 
+            # Graficar probabilidades y enviar imagen
             prob_buf = plot_probabilities(win_percentage, draw_percentage, lose_percentage, home_team_name, away_team_name)
             await update.message.reply_photo(photo=prob_buf)
 
-            last_5_games_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
-            await update.message.reply_photo(photo=last_5_games_buf)
+            # Graficar rendimiento de los últimos 5 partidos
+            performance_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+            await update.message.reply_photo(photo=performance_buf)
+
+            # Mostrar los últimos 5 partidos
+            home_last_games_text = f"\nÚltimos 5 partidos de {home_team_name}:\n\n" + "\n".join([f"{game['homeTeam']['name']} {game['score']['fullTime']['homeTeam']} - {game['score']['fullTime']['awayTeam']} {game['awayTeam']['name']}" for game in home_last_5])
+            away_last_games_text = f"\n\nÚltimos 5 partidos de {away_team_name}:\n\n" + "\n".join([f"{game['homeTeam']['name']} {game['score']['fullTime']['homeTeam']} - {game['score']['fullTime']['awayTeam']} {game['awayTeam']['name']}" for game in away_last_5])
+            await update.message.reply_text(home_last_games_text + away_last_games_text)
+
+            # Mostrar estadísticas avanzadas
+            advanced_stats_text = (
+                f"\n\nEstadísticas Avanzadas:\n"
+                f"{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
+                f"{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}"
+            )
+            await update.message.reply_text(advanced_stats_text)
+
     else:
         await update.message.reply_text("Error al obtener los datos del partido.")
 
