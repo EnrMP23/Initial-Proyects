@@ -1,244 +1,152 @@
 import requests
 import matplotlib.pyplot as plt
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler
 
-# Configura tu clave API y los endpoints
-API_KEY = '7dcb5906ce9b48cf9becc41685b38867'  # Reemplaza con tu clave API de football-data.org
-BASE_URL = 'https://api.football-data.org/v4/matches'
-TEAMS_URL = 'https://api.football-data.org/v4/teams'
-STANDINGS_URL = 'https://api.football-data.org/v4/competitions/{league_id}/standings'
+# Define your API key and endpoints
+API_KEY = "7dcb5906ce9b48cf9becc41685b38867"
+TEAMS_URL = "https://api.football-data.org/v4/teams"
+MATCHES_URL = "https://api.football-data.org/v4/matches"
 
-# Ligas de interés (IDs de las ligas)
-LEAGUES = {
-    'La Liga': 2014,    # Liga Española
-    'Premier League': 2021,  # Liga Inglesa
-    'Bundesliga': 2002,   # Liga Alemana
-    'Ligue 1': 2015,   # Liga Francesa
-    'Serie A (Italia)': 2019,
-    'Champions League': 2001
-}
-
-# Personalización de la predicción
-confidence_threshold = 0.6  # Umbral de confianza para mostrar predicciones
-
-def get_matches(season='2024'):
-    headers = {
-        'X-Auth-Token': API_KEY
-    }
-
-    matches = []
-
-    for league_name, league_id in LEAGUES.items():
-        response = requests.get(f"{BASE_URL}?competitions={league_id}&season={season}", headers=headers)
-
-        if response.status_code == 200:
-            league_matches = response.json().get('matches', [])
-            matches.extend(league_matches)
-        else:
-            print(f"Error al obtener partidos de {league_name}. Estado: {response.status_code}")
-
-    return matches
-
-def get_team_stats(team_id, league_id):
-    headers = {
-        'X-Auth-Token': API_KEY
-    }
-
-    response = requests.get(STANDINGS_URL.format(league_id=league_id), headers=headers)
-    if response.status_code == 200:
-        standings_data = response.json()
-
-        for standing in standings_data['standings'][0]['table']:
-            if standing['team']['id'] == team_id:
-                return {
-                    'position': standing.get('position', None),
-                    'points': standing.get('points', 0),
-                    'goalsFor': standing.get('goalsFor', 0),
-                    'goalsAgainst': standing.get('goalsAgainst', 0),
-                    'goalDifference': standing.get('goalsFor', 0) - standing.get('goalsAgainst', 0),
-                    'matchesPlayed': standing.get('matchesPlayed', 1),  # Usar 1 para evitar división por cero
-                }
-
-    print(f"Error al obtener estadísticas del equipo {team_id}. Estado: {response.status_code}")
-    return None
-
+# Fetch last 5 games for a team
 def get_last_5_games(team_id):
     headers = {
         'X-Auth-Token': API_KEY
     }
-
-    # Realizamos la solicitud de los últimos 5 partidos finalizados
+    
     response = requests.get(f"{TEAMS_URL}/{team_id}/matches?status=FINISHED", headers=headers)
     
     if response.status_code == 200:
-        matches = response.json().get('matches', [])
-        last_5_matches = matches[-5:]  # Obtenemos solo los últimos 5 partidos
-
-        # Procesamos los últimos 5 partidos con más detalles
-        games_data = []
-        for match in last_5_matches:
-            game_info = {
-                'date': match['utcDate'],  # Fecha del partido
+        matches = response.json().get('matches', [])[-5:]  # Get the last 5 matches
+        last_5_games = []
+        
+        for match in matches:
+            last_5_games.append({
                 'homeTeam': match['homeTeam']['name'],
                 'awayTeam': match['awayTeam']['name'],
-                'homeScore': match['score']['fullTime']['homeTeam'],
-                'awayScore': match['score']['fullTime']['awayTeam'],
-                'location': 'Home' if match['homeTeam']['id'] == team_id else 'Away'
-            }
-            games_data.append(game_info)
-        
-        return games_data
+                'score': {
+                    'homeTeam': match['score']['fullTime']['homeTeam'],
+                    'awayTeam': match['score']['fullTime']['awayTeam']
+                }
+            })
+        return last_5_games
     else:
         print(f"Error al obtener los últimos 5 partidos del equipo {team_id}. Estado: {response.status_code}")
         return []
 
+# Plot last 5 games performance
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    home_scores = [game['homeScore'] for game in home_last_5]
-    away_scores = [game['awayScore'] for game in away_last_5]
+    # Ensure the score extraction is correct for both home and away teams
+    home_scores = [game['score']['homeTeam'] for game in home_last_5]  # Extract home team scores
+    away_scores = [game['score']['awayTeam'] for game in away_last_5]  # Extract away team scores
 
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
     plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
     
     plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
-    plt.title(f'Rendimiento de los Últimos 5 Partidos: {home_team_name} vs {away_team_name}')
+    plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
     plt.legend()
-
-    # Guardar la gráfica en un buffer
+    
+    # Save the plot in a buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     buf.seek(0)
-    plt.close()  # Cerramos la figura para liberar memoria
+    plt.close()  # Close the figure to free memory
     return buf
 
-def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
-    home_stats = get_team_stats(home_team_id, league_id)
-    away_stats = get_team_stats(away_team_id, league_id)
-
-    if not home_stats or not away_stats:
-        return None, None, None, None, None, None, None
-
-    # Obtener los últimos 5 partidos
-    home_last_5 = get_last_5_games(home_team_id)
-    away_last_5 = get_last_5_games(away_team_id)
-
-    # Cálculo de rendimiento
-    home_goals_avg = home_stats['goalsFor'] / home_stats['matchesPlayed']
-    away_goals_avg = away_stats['goalsFor'] / away_stats['matchesPlayed']
-    home_goals_conceded_avg = home_stats['goalsAgainst'] / home_stats['matchesPlayed']
-    away_goals_conceded_avg = away_stats['goalsAgainst'] / away_stats['matchesPlayed']
-
-    # Estimaciones de goles (ajustando para realismo)
-    estimated_home_goals = (home_goals_avg + away_goals_conceded_avg) / 2
-    estimated_away_goals = (away_goals_avg + home_goals_conceded_avg) / 2
-
-    # Probabilidades basadas en las estimaciones de goles
-    total_goals = estimated_home_goals + estimated_away_goals
-
-    if total_goals > 0:
-        home_win_percentage = (estimated_home_goals / total_goals) * 100
-        away_win_percentage = (estimated_away_goals / total_goals) * 100
+# Fetch team statistics (like goals for, goals against, and points)
+def get_team_stats(team_id):
+    headers = {
+        'X-Auth-Token': API_KEY
+    }
+    
+    response = requests.get(f"{TEAMS_URL}/{team_id}", headers=headers)
+    
+    if response.status_code == 200:
+        team_data = response.json()
+        return {
+            'goalsFor': team_data['goalsFor'],
+            'goalsAgainst': team_data['goalsAgainst'],
+            'points': team_data['points']
+        }
     else:
-        home_win_percentage = 50
-        away_win_percentage = 50
+        print(f"Error al obtener las estadísticas del equipo {team_id}. Estado: {response.status_code}")
+        return {}
 
-    # Añadir un porcentaje base para el empate
-    draw_percentage = 100 - (home_win_percentage + away_win_percentage)
-    if draw_percentage < 10:
-        draw_percentage = 10
+# Fetch the match by ID and generate prediction and stats
+def get_match_prediction(match_id):
+    headers = {
+        'X-Auth-Token': API_KEY
+    }
+    
+    response = requests.get(f"{MATCHES_URL}/{match_id}", headers=headers)
+    
+    if response.status_code == 200:
+        match_data = response.json()
+        
+        home_team_id = match_data['homeTeam']['id']
+        away_team_id = match_data['awayTeam']['id']
+        
+        home_team_name = match_data['homeTeam']['name']
+        away_team_name = match_data['awayTeam']['name']
+        
+        home_last_5 = get_last_5_games(home_team_id)
+        away_last_5 = get_last_5_games(away_team_id)
+        
+        home_stats = get_team_stats(home_team_id)
+        away_stats = get_team_stats(away_team_id)
 
-    # Normalizar porcentajes
-    total_adjusted = home_win_percentage + away_win_percentage + draw_percentage
-    home_win_percentage = (home_win_percentage / total_adjusted) * 100
-    away_win_percentage = (away_win_percentage / total_adjusted) * 100
-    draw_percentage = (draw_percentage / total_adjusted) * 100
-
-    # Determinación del resultado
-    if home_win_percentage > away_win_percentage and home_win_percentage > draw_percentage:
-        result = f"{home_team_name} ganará"
-        winning_team = home_team_name
-    elif away_win_percentage > home_win_percentage and away_win_percentage > draw_percentage:
-        result = f"{away_team_name} ganará"
-        winning_team = away_team_name
+        # Generate a plot of the last 5 matches performance
+        plot_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+        
+        # Build the response text including basic and advanced stats
+        response_text = (
+            f"Predicción del Partido:\n\n"
+            f"{home_team_name} vs {away_team_name}\n"
+            f"Últimos 5 Partidos:\n"
+            f"{home_team_name}: {home_last_5}\n"
+            f"{away_team_name}: {away_last_5}\n\n"
+            f"Estadísticas Avanzadas:\n"
+            f"{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
+            f"{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}"
+        )
+        
+        return response_text, plot_buf
     else:
-        result = "Empate"
-        winning_team = "Ninguno (Empate)"
+        print(f"Error al obtener los datos del partido {match_id}. Estado: {response.status_code}")
+        return None, None
 
-    # Verificar la confianza en la predicción
-    if home_win_percentage >= confidence_threshold * 100:
-        result += f" (Alta confianza en que {home_team_name} ganará)"
-    elif away_win_percentage >= confidence_threshold * 100:
-        result += f" (Alta confianza en que {away_team_name} ganará)"
-
-    return (home_win_percentage, draw_percentage, away_win_percentage, 
-            estimated_home_goals, estimated_away_goals, 
-            home_last_5, away_last_5, result)
-
-# Manejo del comando /match
-async def match_prediction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    match_id = context.args[0]
-
-    matches = get_matches()  # Obtiene todos los partidos
-    match = next((m for m in matches if str(m['id']) == match_id), None)
-
-    if not match:
-        await update.message.reply_text(f"No se encontró el partido con ID {match_id}.")
+# Bot command to predict a match
+async def predict(update: Update, context):
+    match_id = context.args[0] if context.args else None
+    
+    if not match_id:
+        await update.message.reply_text("Por favor proporciona un ID de partido válido.")
         return
+    
+    response_text, plot_buf = get_match_prediction(match_id)
+    
+    if response_text and plot_buf:
+        await update.message.reply_photo(photo=plot_buf, caption=response_text)
+    else:
+        await update.message.reply_text("Error al obtener la predicción del partido.")
 
-    home_team_id = match['homeTeam']['id']
-    away_team_id = match['awayTeam']['id']
-    home_team_name = match['homeTeam']['name']
-    away_team_name = match['awayTeam']['name']
-    league_id = match['competition']['id']
+# Main function to run the bot
+async def main():
+    application = ApplicationBuilder().token("7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c").build()
+    
+    # Add the prediction command handler
+    application.add_handler(CommandHandler("predict", predict))
+    
+    # Start the bot
+    await application.start()
+    await application.idle()
 
-    (home_win_percentage, draw_percentage, away_win_percentage,
-     estimated_home_goals, estimated_away_goals, 
-     home_last_5, away_last_5, result) = predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name)
-
-    if not home_win_percentage:
-        await update.message.reply_text("Hubo un problema al predecir el resultado. Inténtalo de nuevo.")
-        return
-
-    # Mensaje de respuesta
-    response = f"Partido: {home_team_name} vs {away_team_name}\n"
-    response += f"Estadísticas del partido:\n"
-    response += f"Probabilidad de victoria {home_team_name}: {home_win_percentage:.2f}%\n"
-    response += f"Probabilidad de empate: {draw_percentage:.2f}%\n"
-    response += f"Probabilidad de victoria {away_team_name}: {away_win_percentage:.2f}%\n"
-    response += f"Predicción: {result}\n"
-    response += f"Estimación de goles: {home_team_name} {estimated_home_goals:.1f} - {estimated_away_goals:.1f} {away_team_name}\n"
-
-    await update.message.reply_text(response)
-
-    # Información de los últimos 5 partidos
-    home_last_games_text = (
-        f"\nÚltimos 5 partidos de {home_team_name}:\n\n" + 
-        "\n".join([f"{game['date'][:10]}: {game['homeTeam']} {game['homeScore']} - {game['awayScore']} {game['awayTeam']} (Local: {game['location']})"
-                   for game in home_last_5])
-    )
-    away_last_games_text = (
-        f"\n\nÚltimos 5 partidos de {away_team_name}:\n\n" + 
-        "\n".join([f"{game['date'][:10]}: {game['homeTeam']} {game['homeScore']} - {game['awayScore']} {game['awayTeam']} (Local: {game['location']})"
-                   for game in away_last_5])
-    )
-    await update.message.reply_text(home_last_games_text + away_last_games_text)
-
-# Configuración del bot
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text('¡Hola! Usa el comando /match <id> para obtener una predicción de partido.')
-
-if __name__ == '__main__':
-    # Configuración de la aplicación
-    application = ApplicationBuilder().token('7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c').build()
-
-    # Configurar los comandos del bot
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("match", match_prediction))
-
-    # Iniciar la aplicación
-    application.run_polling()
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
 
