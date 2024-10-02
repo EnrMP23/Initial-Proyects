@@ -1,0 +1,14 @@
+version: 1
+services:
+  - type: web
+    name: FootballAIResultsBot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python FootballAIResults_telegram_bot.py
+    envVars:
+      - key: FOOTBALL_DATA_API_KEY
+        value: your_football_data_api_key
+      - key: TELEGRAM_BOT_TOKEN
+        value: your_telegram_bot_token
+      - key: APP_URL
+        value: https://your-app.onrender.com
