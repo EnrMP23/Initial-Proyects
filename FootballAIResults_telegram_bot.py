@@ -96,33 +96,38 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
+    # Obtener los últimos 5 goles anotados por cada equipo
     home_scores = [game['score']['home'] for game in home_last_5]
     away_scores = [game['score']['away'] for game in away_last_5]
 
-    # Asegúrate de que la longitud de las listas sea 5
+    # Asegurarse de que ambas listas tengan 5 partidos
     if len(home_scores) < 5 or len(away_scores) < 5:
         print("Error: No se han obtenido suficientes partidos para graficar.")
         return None
 
+    # Combinar los resultados en una única lista para una comparación más clara
+    scores = [home_scores[i] + away_scores[i] for i in range(5)]
+
+    # Etiquetas para los partidos
+    matches = ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5']
+
     plt.figure(figsize=(10, 5))
-    
-    # Graficar las puntuaciones de cada equipo
-    plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
-    plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
-    
-    # Añadir etiquetas y título
-    plt.xticks(range(1, 6), ['Partido 1', 'Partido 2', 'Partido 3', 'Partido 4', 'Partido 5'])
+    plt.bar(matches, home_scores, label=home_team_name, color='blue', alpha=0.6)
+    plt.bar(matches, away_scores, label=away_team_name, color='red', alpha=0.6, bottom=home_scores)
+
+    # Títulos y etiquetas
     plt.title('Rendimiento en los Últimos 5 Partidos')
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
     plt.legend()
-    
+
     # Guardar la gráfica en un buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     buf.seek(0)  # Volver al inicio del buffer
     plt.close()  # Cerrar la figura para liberar memoria
     return buf
+
 
 
 
