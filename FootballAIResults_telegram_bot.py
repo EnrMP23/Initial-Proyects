@@ -4,27 +4,11 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import io
 import os
-from flask import Flask, request
-
-app = Flask(__name__)
-@app.route('/webhook', methods=['POST'])  # Asegúrate de permitir POST
-def webhook():
-    data = request.json
-    # Maneja la data...
-    return 'OK', 200
-
 
 # Configura las variables de entorno
 API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "7dcb5906ce9b48cf9becc41685b38867")  # API key de football-data.org
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c")  # Token de Telegram
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://initial-proyects.onrender.com/webhook")  # URL del webhook
-response = requests.post(f'https://api.telegram.org/bot7309741382:AAETHbkJYLMha85xOyuvmdRTLm1WUPD2y0c/setWebhook?url=https://initial-proyects.onrender.com
-', json={'url': WEBHOOK_URL})
-
-if response.status_code == 200:
-    print('Webhook configurado correctamente.')
-else:
-    print(f'Error al configurar el webhook: {response.status_code} - {response.text}')
 
 # Endpoints de la API
 BASE_URL = 'https://api.football-data.org/v4/matches'
@@ -262,11 +246,10 @@ if __name__ == '__main__':
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("predict", predict))
+    print('siuuuuuuuuuuuuuh')
 
     application.run_webhook(
         listen="0.0.0.0",
         port=8443,
         url_path="/webhook",
         webhook_url=WEBHOOK_URL
-    )
-    app.run()
