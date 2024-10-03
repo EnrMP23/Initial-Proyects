@@ -190,7 +190,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         match_list = "\n".join([f"{match['id']}: {match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
         await update.message.reply_text(f"¡Hola! Aquí tienes la lista de partidos disponibles:\n{match_list}\n\nUsa /predict <match_id> para predecir el resultado de un partido.")
     else:
-        await update.message.reply_text("No se encontraron partidos disponibles en este momento.")
+        await update.message.reply_text("No se encontraron partidos disponibles en este momento, intentalo mas tarde o a las 17:00 horas para actualización.")
 
 async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) != 1:
@@ -253,4 +253,4 @@ if __name__ == '__main__':
         webhook_url=WEBHOOK_URL
     )
     
-print('SIUUUUUUUUH')
+        print('SIUUUUUUUUH')
