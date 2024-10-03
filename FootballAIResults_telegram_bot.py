@@ -26,7 +26,7 @@ LEAGUES = {
 }
 
 # Personalización de la predicción
-confidence_threshold = 0.6  # Umbral de confianza para mostrar predicciones
+confidence_threshold = 0.65  # Umbral de confianza para mostrar predicciones
 
 def get_matches(season='2024'):
     headers = {
@@ -246,10 +246,10 @@ if __name__ == '__main__':
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("predict", predict))
-    print('SIUUUUUUUUH')
     application.run_webhook(
         listen="0.0.0.0",
         port=8443,
         url_path="/webhook",
         webhook_url=WEBHOOK_URL
     )
+    print('SIUUUUUUUUH')
