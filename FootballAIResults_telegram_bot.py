@@ -261,16 +261,17 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     else:
         await update.message.reply_text("Error al obtener los datos del partido.")
-
-def get_suspensions_injuries(match_id):
+        
+def get_match_stats(match_id):
     headers = {'X-Auth-Token': API_KEY}
-    response = requests.get(f"{BASE_URL}/{match_id}", headers=headers)
+    response = requests.get(f"{BASE_URL}/matches/{match_id}", headers=headers)
 
     if response.status_code == 200:
         match = response.json()
-        injuries_home = match['homeTeam']['lineup']['missingPlayers']
-        injuries_away = match['awayTeam']['lineup']['missingPlayers']
-        return injuries_home, injuries_away
+        home_shots_on_target = match['homeTeam']['statistics']['shotsOnTarget']
+        away_shots_on_target = match['awayTeam']['statistics']['shotsOnTarget']
+        
+        return home_shots_on_target, away_shots_on_target
     else:
         return None, None
 
