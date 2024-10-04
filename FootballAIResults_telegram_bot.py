@@ -17,10 +17,10 @@ STANDINGS_URL = 'https://api.football-data.org/v4/competitions/{league_id}/stand
 
 # Ligas de interés (IDs de las ligas)
 LEAGUES = {
-    'La Liga': 2014,    
-    'Premier League': 2021,  
-    'Bundesliga': 2002,   
-    'Ligue 1': 2015,   
+    'La Liga': 2014,    # Liga Española
+    'Premier League': 2021,  # Liga Inglesa
+    'Bundesliga': 2002,   # Liga Alemana
+    'Ligue 1': 2015,   # Liga Francesa
     'Serie A (Italia)': 2019,
     'Champions League': 2001
 }
@@ -28,24 +28,33 @@ LEAGUES = {
 # Personalización de la predicción
 confidence_threshold = 0.65  # Umbral de confianza para mostrar predicciones
 
-# Funciones para obtener partidos, estadísticas y gráficos
 def get_matches(season='2024'):
-    headers = {'X-Auth-Token': API_KEY}
+    headers = {
+        'X-Auth-Token': API_KEY
+    }
+
     matches = []
+
     for league_name, league_id in LEAGUES.items():
         response = requests.get(f"{BASE_URL}?competitions={league_id}&season={season}", headers=headers)
+
         if response.status_code == 200:
             league_matches = response.json().get('matches', [])
             matches.extend(league_matches)
         else:
             print(f"Error al obtener partidos de {league_name}. Estado: {response.status_code}")
+
     return matches
 
 def get_team_stats(team_id, league_id):
-    headers = {'X-Auth-Token': API_KEY}
+    headers = {
+        'X-Auth-Token': API_KEY
+    }
+
     response = requests.get(STANDINGS_URL.format(league_id=league_id), headers=headers)
     if response.status_code == 200:
         standings_data = response.json()
+
         for standing in standings_data['standings'][0]['table']:
             if standing['team']['id'] == team_id:
                 return {
@@ -54,104 +63,66 @@ def get_team_stats(team_id, league_id):
                     'goalsFor': standing.get('goalsFor', 0),
                     'goalsAgainst': standing.get('goalsAgainst', 0),
                     'goalDifference': standing.get('goalsFor', 0) - standing.get('goalsAgainst', 0),
-                    'matchesPlayed': standing.get('matchesPlayed', 1),
+                    'matchesPlayed': standing.get('matchesPlayed', 1),  # Usar 1 para evitar división por cero
+                    'last5Games': standing.get('last5Games', [])
                 }
+
     print(f"Error al obtener estadísticas del equipo {team_id}. Estado: {response.status_code}")
     return None
 
 def get_last_5_games(team_id):
-    headers = {'X-Auth-Token': API_KEY}
+    headers = {
+        'X-Auth-Token': API_KEY
+    }
+
     response = requests.get(f"{TEAMS_URL}/{team_id}/matches?status=FINISHED", headers=headers)
     if response.status_code == 200:
-        matches = response.json().get('matches', [])[-5:]
+        matches = response.json().get('matches', [])[-5:]  # Obtener solo los últimos 5 partidos
         return [{'homeTeam': match['homeTeam']['name'], 'awayTeam': match['awayTeam']['name'], 'score': match['score']['fullTime']} for match in matches]
     else:
         print(f"Error al obtener los últimos 5 partidos del equipo {team_id}. Estado: {response.status_code}")
         return []
 
-def get_home_away_performance(team_id):
-    headers = {'X-Auth-Token': API_KEY}
-    response = requests.get(f"{TEAMS_URL}/{team_id}/matches?status=FINISHED", headers=headers)
-    
-    if response.status_code == 200:
-        matches = response.json().get('matches', [])
-        home_games = [match for match in matches if match['homeTeam']['id'] == team_id]
-        away_games = [match for match in matches if match['awayTeam']['id'] == team_id]
-
-        home_performance = {'played': len(home_games), 'wins': sum(1 for m in home_games if m['score']['winner'] == 'HOME_TEAM')}
-        away_performance = {'played': len(away_games), 'wins': sum(1 for m in away_games if m['score']['winner'] == 'AWAY_TEAM')}
-
-        return home_performance, away_performance
-    else:
-        print(f"Error al obtener el rendimiento en casa y fuera del equipo {team_id}. Estado: {response.status_code}")
-        return None, None
-
-def get_shots_stats(match_id):
-    headers = {'X-Auth-Token': API_KEY}
-    response = requests.get(f"{BASE_URL}/{match_id}", headers=headers)
-
-    if response.status_code == 200:
-        match = response.json()
-        home_shots = match['homeTeam']['statistics']['shotsOnTarget']
-        away_shots = match['awayTeam']['statistics']['shotsOnTarget']
-        return home_shots, away_shots
-    else:
-        print(f"Error al obtener estadísticas de disparos para el partido {match_id}. Estado: {response.status_code}")
-        return None, None
-
-def get_suspensions_injuries(match_id):
-    headers = {'X-Auth-Token': API_KEY}
-    response = requests.get(f"{BASE_URL}/{match_id}", headers=headers)
-
-    if response.status_code == 200:
-        match = response.json()
-        injuries_home = match['homeTeam']['lineup']['missingPlayers'] if 'lineup' in match['homeTeam'] else []
-        injuries_away = match['awayTeam']['lineup']['missingPlayers'] if 'lineup' in match['awayTeam'] else []
-        return injuries_home, injuries_away
-    else:
-        print(f"Error al obtener lesiones para el partido {match_id}. Estado: {response.status_code}")
-        return None, None
-
-def get_set_piece_efficiency(team_id):
-    headers = {'X-Auth-Token': API_KEY}
-    response = requests.get(f"{TEAMS_URL}/{team_id}/matches?status=FINISHED", headers=headers)
-
-    if response.status_code == 200:
-        matches = response.json().get('matches', [])
-        corners = sum(match['statistics']['corners'] for match in matches if 'statistics' in match)
-        goals_from_set_pieces = sum(1 for match in matches if match.get('goalType') == 'setPiece')
-        return corners, goals_from_set_pieces
-    else:
-        print(f"Error al obtener la eficiencia de jugadas de balón parado para el equipo {team_id}. Estado: {response.status_code}")
-        return None, None
-
 def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name):
     labels = [home_team_name, 'Empate', away_team_name]
     sizes = [home_win_percentage, draw_percentage, away_win_percentage]
     colors = ['#ff9999', '#66b3ff', '#99ff99']
+
     plt.figure(figsize=(8, 5))
     plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140)
-    plt.axis('equal')
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
     plt.title('Probabilidades de Resultado')
+
+    # Guardar la gráfica en un buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
-    buf.seek(0)
-    plt.close()
+    buf.seek(0)  # Volver al inicio del buffer
+    plt.close()  # Cerrar la figura para liberar memoria
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     home_scores = []
     away_scores = []
+
+    # Revisar todos los partidos del equipo 1 (home team)
     for game in home_last_5:
         if game['homeTeam'] == home_team_name:
+            # Si el equipo es local, tomar los goles del equipo local
             home_scores.append(game['score']['home'])
         else:
+            # Si el equipo es visitante, tomar los goles del equipo visitante
             home_scores.append(game['score']['away'])
+
+    # Revisar todos los partidos del equipo 2 (away team)
     for game in away_last_5:
         if game['awayTeam'] == away_team_name:
+            # Si el equipo es visitante, tomar los goles del equipo visitante
             away_scores.append(game['score']['away'])
         else:
+            # Si el equipo es local, tomar los goles del equipo local
             away_scores.append(game['score']['home'])
+
+    # Gráfica ajustada
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
     plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
@@ -160,104 +131,136 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     plt.xlabel('Partidos')
     plt.ylabel('Goles')
     plt.legend()
+
+    # Guardar la gráfica en un buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
-    buf.seek(0)
-    plt.close()
+    buf.seek(0)  # Volver al inicio del buffer
+    plt.close()  # Cerrar la figura para liberar memoria
     return buf
 
+
+
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
-    # Obtener estadísticas de los equipos
     home_stats = get_team_stats(home_team_id, league_id)
     away_stats = get_team_stats(away_team_id, league_id)
 
-    # Obtener rendimiento en casa y fuera
-    home_performance, away_performance = get_home_away_performance(home_team_id)
-    
-    # Obtener últimos 5 partidos
+    if not home_stats or not away_stats:
+        return None, None, None, None, None, None, None, None
+
+    # Obtener los últimos 5 partidos
     home_last_5 = get_last_5_games(home_team_id)
     away_last_5 = get_last_5_games(away_team_id)
 
-    # Obtener goles por partido
-    home_goals = home_stats['goalsFor'] / home_stats['matchesPlayed']
-    away_goals = away_stats['goalsFor'] / away_stats['matchesPlayed']
-    
-    # Obtener estadísticas de disparos
-    home_shots, away_shots = get_shots_stats(home_team_id)  # Cambiar a ID de equipo
-    home_shots_on_target, away_shots_on_target = home_shots, away_shots
-    
-    # Lesiones y sanciones
-    injuries_home, injuries_away = get_suspensions_injuries(home_team_id)  # Cambiar a ID de equipo
-    
-    # Eficiencia en jugadas de balón parado
-    corners_home, goals_home = get_set_piece_efficiency(home_team_id)  # Cambiar a ID de equipo
-    corners_away, goals_away = get_set_piece_efficiency(away_team_id)  # Cambiar a ID de equipo
-    
-    # Cálculo de probabilidades
-    home_win_percentage = (home_goals + home_performance['wins'] + goals_home) / (home_performance['played'] + away_performance['played']) * 100
-    away_win_percentage = (away_goals + away_performance['wins'] + goals_away) / (home_performance['played'] + away_performance['played']) * 100
+    # Cálculo de rendimiento
+    home_goals_avg = home_stats['goalsFor'] / home_stats['matchesPlayed']
+    away_goals_avg = away_stats['goalsFor'] / away_stats['matchesPlayed']
+    home_goals_conceded_avg = home_stats['goalsAgainst'] / home_stats['matchesPlayed']
+    away_goals_conceded_avg = away_stats['goalsAgainst'] / away_stats['matchesPlayed']
+
+    # Estimaciones de goles (ajustando para realismo)
+    estimated_home_goals = (home_goals_avg + away_goals_conceded_avg) / 2
+    estimated_away_goals = (away_goals_avg + home_goals_conceded_avg) / 2
+
+    # Probabilidades basadas en las estimaciones de goles
+    total_goals = estimated_home_goals + estimated_away_goals
+
+    if total_goals > 0:
+        home_win_percentage = (estimated_home_goals / total_goals) * 100
+        away_win_percentage = (estimated_away_goals / total_goals) * 100
+    else:
+        home_win_percentage = 50
+        away_win_percentage = 50
+
+    # Añadir un porcentaje base para el empate
     draw_percentage = 100 - (home_win_percentage + away_win_percentage)
-    
-    result = None
-    winning_team = None
-    
-    if home_win_percentage >= confidence_threshold * 100:
-        result = "Victoria de " + home_team_name
+    if draw_percentage < 10:
+        draw_percentage = 10
+
+    # Normalizar porcentajes
+    total_adjusted = home_win_percentage + away_win_percentage + draw_percentage
+    home_win_percentage = (home_win_percentage / total_adjusted) * 100
+    away_win_percentage = (away_win_percentage / total_adjusted) * 100
+    draw_percentage = (draw_percentage / total_adjusted) * 100
+
+    # Determinación del resultado
+    if home_win_percentage > away_win_percentage and home_win_percentage > draw_percentage:
+        result = f"{home_team_name} ganará"
         winning_team = home_team_name
-    elif away_win_percentage >= confidence_threshold * 100:
-        result = "Victoria de " + away_team_name
+    elif away_win_percentage > home_win_percentage and away_win_percentage > draw_percentage:
+        result = f"{away_team_name} ganará"
         winning_team = away_team_name
     else:
         result = "Empate"
+        winning_team = "Ninguno (Empate)"
+
+    # Verificar la confianza en la predicción
+    if home_win_percentage >= confidence_threshold * 100:
+        result += f" (Alta confianza en que {home_team_name} ganará)"
+    elif away_win_percentage >= confidence_threshold * 100:
+        result += f" (Alta confianza en que {away_team_name} ganará)"
+    else:
+        result += " (Confianza baja en la predicción)"
 
     return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats
 
-# Comandos del bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Obtener los partidos disponibles
     matches = get_matches()
     if matches:
-        message = "Partidos disponibles para predecir:\n"
-        for match in matches:
-            message += f"{match['homeTeam']['name']} vs {match['awayTeam']['name']} (ID: {match['id']})\n"
-        await update.message.reply_text(message + "Usa el comando /predict <match_id> para obtener una predicción para un partido.")
+        match_list = "\n".join([f"{match['id']}: {match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
+        await update.message.reply_text(f"¡Hola! Aquí tienes la lista de partidos disponibles:\n{match_list}\n\nUsa /predict <match_id> para predecir el resultado de un partido.")
     else:
-        await update.message.reply_text("Lo siento, no hay partidos disponibles para predecir en este momento.")
+        await update.message.reply_text("No se encontraron partidos disponibles en este momento, intentalo mas tarde o a las 17:00 horas para actualización.")
 
 async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if len(context.args) == 0:
-        await update.message.reply_text("Por favor, proporciona el ID del partido. Usa el comando /start para ver la lista de partidos.")
+    if len(context.args) != 1:
+        await update.message.reply_text("Por favor proporciona un ID de partido válido.")
         return
-    try:
-        match_id = int(context.args[0])
-        matches = get_matches()
-        selected_match = next((match for match in matches if match['id'] == match_id), None)
-        if not selected_match:
-            await update.message.reply_text("ID de partido no válido. Usa /start para ver la lista de partidos disponibles.")
-            return
-        home_team_id = selected_match['homeTeam']['id']
-        away_team_id = selected_match['awayTeam']['id']
-        league_id = selected_match['competition']['id']
-        home_team_name = selected_match['homeTeam']['name']
-        away_team_name = selected_match['awayTeam']['name']
-        result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(
-            home_team_id, away_team_id, league_id, home_team_name, away_team_name
-        )
-        if not result:
-            await update.message.reply_text("No se pudo obtener estadísticas para este partido.")
-            return
-        plot_image = plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name)
-        last5_image = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
-        caption = (f"Predicción para {home_team_name} vs {away_team_name}:\n\n"
-                   f"Resultado probable: {result}\n"
-                   f"Posición en la liga:\n"
-                   f"{home_team_name}: {home_stats['position']}º, {home_stats['points']} pts, {home_stats['goalDifference']} dif. de gol\n"
-                   f"{away_team_name}: {away_stats['position']}º, {away_stats['points']} pts, {away_stats['goalDifference']} dif. de gol\n"
-                   f"Últimos 5 partidos:\n{home_last_5}\n{away_last_5}")
-        await update.message.reply_photo(photo=plot_image, caption=caption)
-        await update.message.reply_photo(photo=last5_image, caption="Rendimiento en los últimos 5 partidos")
-    except ValueError:
-        await update.message.reply_text("ID de partido no válido. Usa /start para ver la lista de partidos disponibles.")
 
+    match_id = int(context.args[0])
+    match_response = requests.get(f"{BASE_URL}/{match_id}", headers={'X-Auth-Token': API_KEY})
+    if match_response.status_code == 200:
+        match_data = match_response.json()
+        home_team_id = match_data['homeTeam']['id']
+        away_team_id = match_data['awayTeam']['id']
+        league_id = match_data['competition']['id']
+        home_team_name = match_data['homeTeam']['name']
+        away_team_name = match_data['awayTeam']['name']
+
+        result, winning_team, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(
+            home_team_id, away_team_id, league_id, home_team_name, away_team_name)
+
+        if result:
+            league_info = f"{home_team_name} (Posición: {home_stats['position']}, Puntos: {home_stats['points']}) vs {away_team_name} (Posición: {away_stats['position']}, Puntos: {away_stats['points']})"
+            await update.message.reply_text(league_info)
+
+            # Mensaje sobre la predicción
+            await update.message.reply_text(f"Predicción: {result}")
+
+            # Graficar probabilidades y enviar imagen
+            prob_buf = plot_probabilities(win_percentage, draw_percentage, lose_percentage, home_team_name, away_team_name)
+            await update.message.reply_photo(photo=prob_buf)
+
+            # Graficar rendimiento de los últimos 5 partidos
+            performance_buf = plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name)
+            await update.message.reply_photo(photo=performance_buf)
+
+            # Mostrar los últimos 5 partidos
+            home_last_games_text = f"\nÚltimos 5 partidos de {home_team_name}:\n\n" + "\n".join([f"{game['homeTeam']} {game['score']['home']} - {game['score']['away']} {game['awayTeam']}" for game in home_last_5])
+            away_last_games_text = f"\n\nÚltimos 5 partidos de {away_team_name}:\n\n" + "\n".join([f"{game['homeTeam']} {game['score']['home']} - {game['score']['away']} {game['awayTeam']}" for game in away_last_5])
+            await update.message.reply_text(home_last_games_text + away_last_games_text)
+
+            # Mostrar estadísticas avanzadas
+            advanced_stats_text = (
+                f"\n\nEstadísticas Avanzadas:\n"
+                f"{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
+                f"{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}"
+            )
+            await update.message.reply_text(advanced_stats_text)
+
+    else:
+        await update.message.reply_text("Error al obtener los datos del partido.")
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
@@ -266,7 +269,7 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("predict", predict))
     application.run_webhook(
         listen="0.0.0.0",
-        port=8443,
+        port=5000,
         url_path="/webhook",
         webhook_url=WEBHOOK_URL
     )
