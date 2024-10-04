@@ -251,6 +251,4 @@ if __name__ == '__main__':
     )
 
     print('SIUUUUUUUUH')
-else:
-    print('not working')
     
