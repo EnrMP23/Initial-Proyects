@@ -101,17 +101,28 @@ def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage
     return buf
 
 def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
-    # Extract scores from home and away games
-    home_scores = [game['score']['homeTeam'] for game in home_last_5]
-    away_scores = [game['score']['awayTeam'] for game in away_last_5]
+    home_scores = []
+    away_scores = []
 
-    # Ensure both lists have exactly 5 elements (fill with 0 if fewer matches)
-    while len(home_scores) < 5:
-        home_scores.insert(0, 0)  # Insert 0s at the beginning if less than 5 games
-    while len(away_scores) < 5:
-        away_scores.insert(0, 0)  # Insert 0s at the beginning if less than 5 games
+    # Revisar todos los partidos del equipo 1 (home team)
+    for game in home_last_5:
+        if game['homeTeam'] == home_team_name:
+            # Si el equipo es local, tomar los goles del equipo local
+            home_scores.append(game['score']['home'])
+        else:
+            # Si el equipo es visitante, tomar los goles del equipo visitante
+            home_scores.append(game['score']['away'])
 
-    # Plot the performance of both teams
+    # Revisar todos los partidos del equipo 2 (away team)
+    for game in away_last_5:
+        if game['awayTeam'] == away_team_name:
+            # Si el equipo es visitante, tomar los goles del equipo visitante
+            away_scores.append(game['score']['away'])
+        else:
+            # Si el equipo es local, tomar los goles del equipo local
+            away_scores.append(game['score']['home'])
+
+    # Gráfica ajustada
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, 6), home_scores, marker='o', label=home_team_name, color='blue')
     plt.plot(range(1, 6), away_scores, marker='o', label=away_team_name, color='red')
@@ -121,12 +132,13 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     plt.ylabel('Goles')
     plt.legend()
 
-    # Save the plot to a buffer
+    # Guardar la gráfica en un buffer
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
-    buf.seek(0)  # Go back to the beginning of the buffer
-    plt.close()  # Close the plot to free memory
+    buf.seek(0)  # Volver al inicio del buffer
+    plt.close()  # Cerrar la figura para liberar memoria
     return buf
+
 
 
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
