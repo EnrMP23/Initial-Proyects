@@ -55,7 +55,6 @@ def get_team_stats(team_id, league_id):
                     'goalsAgainst': standing.get('goalsAgainst', 0),
                     'goalDifference': standing.get('goalsFor', 0) - standing.get('goalsAgainst', 0),
                     'matchesPlayed': standing.get('matchesPlayed', 1),
-                    'last5Games': standing.get('last5Games', [])
                 }
     print(f"Error al obtener estadísticas del equipo {team_id}. Estado: {response.status_code}")
     return None
@@ -84,6 +83,7 @@ def get_home_away_performance(team_id):
 
         return home_performance, away_performance
     else:
+        print(f"Error al obtener el rendimiento en casa y fuera del equipo {team_id}. Estado: {response.status_code}")
         return None, None
 
 def get_shots_stats(match_id):
@@ -96,6 +96,7 @@ def get_shots_stats(match_id):
         away_shots = match['awayTeam']['statistics']['shotsOnTarget']
         return home_shots, away_shots
     else:
+        print(f"Error al obtener estadísticas de disparos para el partido {match_id}. Estado: {response.status_code}")
         return None, None
 
 def get_suspensions_injuries(match_id):
@@ -104,10 +105,11 @@ def get_suspensions_injuries(match_id):
 
     if response.status_code == 200:
         match = response.json()
-        injuries_home = match['homeTeam']['lineup']['missingPlayers']
-        injuries_away = match['awayTeam']['lineup']['missingPlayers']
+        injuries_home = match['homeTeam']['lineup']['missingPlayers'] if 'lineup' in match['homeTeam'] else []
+        injuries_away = match['awayTeam']['lineup']['missingPlayers'] if 'lineup' in match['awayTeam'] else []
         return injuries_home, injuries_away
     else:
+        print(f"Error al obtener lesiones para el partido {match_id}. Estado: {response.status_code}")
         return None, None
 
 def get_set_piece_efficiency(team_id):
@@ -116,11 +118,11 @@ def get_set_piece_efficiency(team_id):
 
     if response.status_code == 200:
         matches = response.json().get('matches', [])
-        corners = sum(match['statistics']['corners'] for match in matches)
-        goals_from_set_pieces = sum(match['goals'] for match in matches if match['goalType'] == 'setPiece')
-
+        corners = sum(match['statistics']['corners'] for match in matches if 'statistics' in match)
+        goals_from_set_pieces = sum(1 for match in matches if match.get('goalType') == 'setPiece')
         return corners, goals_from_set_pieces
     else:
+        print(f"Error al obtener la eficiencia de jugadas de balón parado para el equipo {team_id}. Estado: {response.status_code}")
         return None, None
 
 def plot_probabilities(home_win_percentage, draw_percentage, away_win_percentage, home_team_name, away_team_name):
@@ -164,33 +166,32 @@ def plot_last_5_games(home_last_5, away_last_5, home_team_name, away_team_name):
     plt.close()
     return buf
 
-# Predicción y análisis de resultados
 def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_team_name):
+    # Obtener estadísticas de los equipos
     home_stats = get_team_stats(home_team_id, league_id)
     away_stats = get_team_stats(away_team_id, league_id)
-    if not home_stats or not away_stats:
-        return None, None, None, None, None, None, None, None
-    
-    # Obtén el rendimiento en casa y fuera
+
+    # Obtener rendimiento en casa y fuera
     home_performance, away_performance = get_home_away_performance(home_team_id)
     
-    # Obtener los últimos 5 partidos
+    # Obtener últimos 5 partidos
     home_last_5 = get_last_5_games(home_team_id)
     away_last_5 = get_last_5_games(away_team_id)
-    
-    # Estadísticas de goles
+
+    # Obtener goles por partido
     home_goals = home_stats['goalsFor'] / home_stats['matchesPlayed']
     away_goals = away_stats['goalsFor'] / away_stats['matchesPlayed']
     
     # Obtener estadísticas de disparos
-    home_shots, away_shots = get_shots_stats(league_id)
+    home_shots, away_shots = get_shots_stats(home_team_id)  # Cambiar a ID de equipo
+    home_shots_on_target, away_shots_on_target = home_shots, away_shots
     
     # Lesiones y sanciones
-    injuries_home, injuries_away = get_suspensions_injuries(league_id)
+    injuries_home, injuries_away = get_suspensions_injuries(home_team_id)  # Cambiar a ID de equipo
     
     # Eficiencia en jugadas de balón parado
-    corners_home, goals_home = get_set_piece_efficiency(home_team_id)
-    corners_away, goals_away = get_set_piece_efficiency(away_team_id)
+    corners_home, goals_home = get_set_piece_efficiency(home_team_id)  # Cambiar a ID de equipo
+    corners_away, goals_away = get_set_piece_efficiency(away_team_id)  # Cambiar a ID de equipo
     
     # Cálculo de probabilidades
     home_win_percentage = (home_goals + home_performance['wins'] + goals_home) / (home_performance['played'] + away_performance['played']) * 100
@@ -257,6 +258,15 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except ValueError:
         await update.message.reply_text("ID de partido no válido. Usa /start para ver la lista de partidos disponibles.")
 
+# Configuración del bot
+async def set_webhook():
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    await application.bot.set_webhook(WEBHOOK_URL)
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("predict", predict))
+    await application.start()
+    await application.idle()
+    
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
