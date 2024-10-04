@@ -258,15 +258,6 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except ValueError:
         await update.message.reply_text("ID de partido no válido. Usa /start para ver la lista de partidos disponibles.")
 
-# Configuración del bot
-async def set_webhook():
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    await application.bot.set_webhook(WEBHOOK_URL)
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("predict", predict))
-    await application.start()
-    await application.idle()
-    
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
