@@ -1,2 +1,2 @@
 #!/bin/bash
-python your_bot_script.py
+python FootballAIResults_telegram_bot.py
