@@ -183,8 +183,14 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
 
     return result, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_team_name, away_team_name
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="¡Hola! Soy un bot de predicciones de partidos de fútbol. Usa /predict para obtener una predicción.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Obtener los partidos disponibles
+    matches = get_matches()
+    if matches:
+        match_list = "\n".join([f"{match['id']}: {match['homeTeam']['name']} vs {match['awayTeam']['name']}" for match in matches])
+        await update.message.reply_text(f"¡Hola! Aquí tienes la lista de partidos disponibles:\n{match_list}\n\nUsa /predict <match_id> para predecir el resultado de un partido.")
+    else:
+        await update.message.reply_text("No se encontraron partidos disponibles en este momento, intentalo mas tarde o a las 17:00 horas para actualización.")
 
 async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) != 1:
