@@ -152,10 +152,6 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
     home_last_5 = get_last_5_games(home_team_id)
     away_last_5 = get_last_5_games(away_team_id)
 
-    # Obtener shots stats
-    home_shots = match['homeTeam']['statistics']['shotsOnTarget']
-    away_shots = match['awayTeam']['statistics']['shotsOnTarget']
-
     # Cálculo de rendimiento
     home_goals_avg = home_stats['goalsFor'] / home_stats['matchesPlayed']
     away_goals_avg = away_stats['goalsFor'] / away_stats['matchesPlayed']
@@ -206,7 +202,7 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
     else:
         result += " (Confianza baja en la predicción)"
 
-    return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats, home_shots, away_shots
+    return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Obtener los partidos disponibles
@@ -232,7 +228,7 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         home_team_name = match_data['homeTeam']['name']
         away_team_name = match_data['awayTeam']['name']
 
-        result, winning_team, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5, home_stats, away_stats, home_shots, away_shots = predict_result(
+        result, winning_team, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(
             home_team_id, away_team_id, league_id, home_team_name, away_team_name)
 
         if result:
@@ -257,8 +253,8 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
             # Mostrar estadísticas avanzadas
             advanced_stats_text = (
-                f"\n\nEstadísticas de lo que va de Temporada:\n"
-                f"{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
+                f"\n\nEstadísticas de lo que va de Temporada:\n\n"
+                f"\n{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
                 f"{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}"
             )
             await update.message.reply_text(advanced_stats_text)
