@@ -152,6 +152,10 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
     home_last_5 = get_last_5_games(home_team_id)
     away_last_5 = get_last_5_games(away_team_id)
 
+    # Obtener shots stats
+    home_shots = match['homeTeam']['statistics']['shotsOnTarget']
+    away_shots = match['awayTeam']['statistics']['shotsOnTarget']
+
     # Cálculo de rendimiento
     home_goals_avg = home_stats['goalsFor'] / home_stats['matchesPlayed']
     away_goals_avg = away_stats['goalsFor'] / away_stats['matchesPlayed']
@@ -202,7 +206,7 @@ def predict_result(home_team_id, away_team_id, league_id, home_team_name, away_t
     else:
         result += " (Confianza baja en la predicción)"
 
-    return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats
+    return result, winning_team, home_win_percentage, draw_percentage, away_win_percentage, home_last_5, away_last_5, home_stats, away_stats, home_shots, away_shots
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Obtener los partidos disponibles
@@ -228,7 +232,7 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         home_team_name = match_data['homeTeam']['name']
         away_team_name = match_data['awayTeam']['name']
 
-        result, winning_team, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5, home_stats, away_stats = predict_result(
+        result, winning_team, win_percentage, draw_percentage, lose_percentage, home_last_5, away_last_5, home_stats, away_stats, home_shots, away_shots = predict_result(
             home_team_id, away_team_id, league_id, home_team_name, away_team_name)
 
         if result:
