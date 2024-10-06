@@ -255,7 +255,7 @@ async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             advanced_stats_text = (
                 f"Estadísticas de lo que va de Temporada:"
                 f"\n{home_team_name} - Goles: {home_stats['goalsFor']}, Goles en Contra: {home_stats['goalsAgainst']}, Puntos: {home_stats['points']}\n"
-                f"\n{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}\n"
+                f"\n\n{away_team_name} - Goles: {away_stats['goalsFor']}, Goles en Contra: {away_stats['goalsAgainst']}, Puntos: {away_stats['points']}\n\n"
             )
             await update.message.reply_text(advanced_stats_text)
 
